@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Screen_Painter.ViewModels"
+             x:Class="Screen_Painter.Views.CloudFolderPickerPage"
+             x:DataType="vm:CloudFolderPickerViewModel"
+             Title="Select a Folder"
+             BackgroundColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}">
+
+    <Grid RowDefinitions="Auto, *, Auto" Padding="0" RowSpacing="0">
+        <!-- App Header & Breadcrumbs Bar -->
+        <VerticalStackLayout Grid.Row="0" Spacing="0" 
+                             BackgroundColor="{AppThemeBinding Light={StaticResource LightCardBg}, Dark={StaticResource DarkCardBg}}">
+            
+            <!-- Breadcrumbs / Current Folder Path -->
+            <Grid ColumnDefinitions="Auto, *" Padding="{StaticResource BannerPadding}" ColumnSpacing="{StaticResource ItemSpacing}">
+                <Button Grid.Column="0" Text="←" Command="{Binding NavigateUpCommand}" 
+                        FontAttributes="Bold" FontSize="{StaticResource SectionTitleFontSize}"
+                        BackgroundColor="Transparent"
+                        TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" 
+                        WidthRequest="{StaticResource RoundIconButtonSize}" HeightRequest="{StaticResource RoundIconButtonSize}" CornerRadius="{StaticResource RoundButtonRadius}" Padding="0" />
+                
+                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="{StaticResource MicroSpacing}">
+                    <Label Text="Current Location" Style="{StaticResource SmallCaptionLabel}" />
+                    <Label Text="{Binding CurrentUrl}" Style="{StaticResource BodyBoldLabel}"
+                           LineBreakMode="MiddleTruncation" />
+                </VerticalStackLayout>
+            </Grid>
+            
+            <!-- Connection Status Banner -->
+            <Grid ColumnDefinitions="*, Auto" Padding="{StaticResource BannerPaddingSm}" ColumnSpacing="{StaticResource CompactSpacing}"
+                  BackgroundColor="{AppThemeBinding Light={StaticResource LightBorder}, Dark={StaticResource DarkBorder}}">
+                <Label Grid.Column="0" Text="{Binding StatusMessage}" Style="{StaticResource SmallCaptionLabel}" VerticalOptions="Center" LineBreakMode="NoWrap" />
+                <Button Grid.Column="1" Text="Test Connection" Command="{Binding TestConnectionCommand}" 
+                        Style="{StaticResource OutlineButton}" VerticalOptions="Center" />
+            </Grid>
+        </VerticalStackLayout>
+
+        <!-- Subfolder Directory Listing -->
+        <RefreshView Grid.Row="1" IsRefreshing="{Binding IsBusy}">
+            <CollectionView ItemsSource="{Binding Subfolders}">
+                <CollectionView.EmptyView>
+                    <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="{StaticResource SectionSpacing}" Padding="{StaticResource EmptyStatePadding}">
+                        <Label Text="📁" FontSize="48" HorizontalOptions="Center" Opacity="0.5" />
+                        <Label Text="No subfolders found here" Style="{StaticResource EmptyStateDetailLabel}" />
+                    </VerticalStackLayout>
+                </CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CloudFolderItem">
+                        <VerticalStackLayout>
+                            <Grid Padding="{StaticResource FolderItemPadding}" ColumnDefinitions="Auto, *, Auto">
+                                <Grid.GestureRecognizers>
+                                    <TapGestureRecognizer x:DataType="{x:Null}" Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CloudFolderPickerViewModel}}, Path=OpenSubfolderCommand}" CommandParameter="{Binding FullPath}" />
+                                </Grid.GestureRecognizers>
+                                
+                                <Label Grid.Column="0" Text="📁" FontSize="22" VerticalOptions="Center" Margin="0,0,16,0" />
+                                
+                                <Label Grid.Column="1" Text="{Binding Name}" Style="{StaticResource FolderItemLabel}" LineBreakMode="MiddleTruncation" VerticalOptions="Center" />
+                                
+                                <Label Grid.Column="2" Text="➔" FontSize="{StaticResource BodyFontSize}" Style="{StaticResource SmallCaptionLabel}" VerticalOptions="Center" Opacity="0.5" />
+                            </Grid>
+                            <BoxView HeightRequest="{StaticResource SeparatorHeight}" Margin="{StaticResource PageMargin}" 
+                                     Color="{AppThemeBinding Light={StaticResource LightBorder}, Dark={StaticResource DarkBorder}}" />
+                        </VerticalStackLayout>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+
+        <!-- Selection Confirmation Bottom Bar -->
+        <Border Grid.Row="2" Padding="{StaticResource BannerPadding}" StrokeShape="Rectangle"
+                BackgroundColor="{AppThemeBinding Light={StaticResource LightCardBg}, Dark={StaticResource DarkCardBg}}"
+                Stroke="{AppThemeBinding Light={StaticResource LightBorder}, Dark={StaticResource DarkBorder}}" StrokeThickness="1">
+            <Button Text="{Binding SelectFolderButtonText}" Command="{Binding SelectFolderCommand}" 
+                    Style="{StaticResource ActionButton}" HeightRequest="46" CornerRadius="{StaticResource ButtonCornerRadiusSm}" FontSize="{StaticResource BodyFontSize}" />
+        </Border>
+    </Grid>
+</ContentPage>

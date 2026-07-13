@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<?xaml-comp compile="true" ?>
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="Screen_Painter.Resources.Styles.LayoutsWindows">
+
+    <!--
+      Layouts.Windows.xaml — Desktop-specific overrides
+      Only defines dimension values that differ from the base Layouts.xaml.
+      Merged AFTER the base in App.xaml.cs, so these take precedence on Windows.
+      Named styles in Layouts.xaml automatically pick up these overridden values.
+      To add Android/iOS/Mac layouts, follow the same pattern.
+    -->
+
+    <!-- ===== Corner Radii (x:Double — MAUI implicitly converts to CornerRadius) ===== -->
+    <x:Double x:Key="CardCornerRadius">16</x:Double>
+    <x:Double x:Key="CardCornerRadiusLg">18</x:Double>
+    <x:Double x:Key="ButtonCornerRadius">12</x:Double>
+    <x:Double x:Key="ButtonCornerRadiusSm">10</x:Double>
+
+    <!-- ===== Font Sizes ===== -->
+    <x:Double x:Key="PageTitleFontSize">26</x:Double>
+    <x:Double x:Key="SectionTitleFontSize">20</x:Double>
+    <x:Double x:Key="SectionSubtitleFontSize">18</x:Double>
+    <x:Double x:Key="BodyFontSize">15</x:Double>
+    <x:Double x:Key="CaptionFontSize">13</x:Double>
+    <x:Double x:Key="CaptionSmallFontSize">12</x:Double>
+
+    <!-- ===== Spacing ===== -->
+    <x:Double x:Key="SectionSpacing">20</x:Double>
+    <x:Double x:Key="ItemSpacing">16</x:Double>
+    <x:Double x:Key="GroupSpacing">16</x:Double>
+    <x:Double x:Key="CompactSpacing">10</x:Double>
+    <x:Double x:Key="TightSpacing">8</x:Double>
+
+    <!-- ===== Button Heights ===== -->
+    <x:Double x:Key="PrimaryButtonHeight">56</x:Double>
+    <x:Double x:Key="StandardButtonHeight">48</x:Double>
+    <x:Double x:Key="CompactButtonHeight">42</x:Double>
+    <x:Double x:Key="SmallButtonHeight">40</x:Double>
+    <x:Double x:Key="MicroButtonHeight">36</x:Double>
+
+    <!-- ===== Card Heights ===== -->
+    <x:Double x:Key="ThumbnailCardHeight">180</x:Double>
+
+    <!-- ===== Margins ===== -->
+    <Thickness x:Key="PageMargin">24</Thickness>
+    <Thickness x:Key="BannerMargin">24,20,24,12</Thickness>
+    <Thickness x:Key="ContentMargin">24,0,24,24</Thickness>
+
+    <!-- ===== Paddings ===== -->
+    <Thickness x:Key="CardPadding">20</Thickness>
+    <Thickness x:Key="CardPaddingCompact">18</Thickness>
+    <Thickness x:Key="BannerPadding">20,16</Thickness>
+    <Thickness x:Key="BannerPaddingSm">20,12</Thickness>
+    <Thickness x:Key="FolderItemPadding">20,16</Thickness>
+
+</ResourceDictionary>

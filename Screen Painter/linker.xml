@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<linker>
+  <!-- Preserve compiled XAML ResourceDictionary types -->
+  <assembly fullname="ScreenPainter">
+    <type fullname="Screen_Painter.Resources.Styles.*" preserve="all" />
+  </assembly>
+
+  <!-- Preserve MAUI types used in XAML StaticResource style setters -->
+  <assembly fullname="Microsoft.Maui">
+    <type fullname="Microsoft.Maui.CornerRadius" preserve="all" />
+    <type fullname="Microsoft.Maui.Thickness" preserve="all" />
+    <type fullname="Microsoft.Maui.Graphics.Color" preserve="all" />
+    <type fullname="Microsoft.Maui.Graphics.SolidColorBrush" preserve="all" />
+  </assembly>
+
+  <!-- Preserve MAUI Controls core types for style resolution -->
+  <assembly fullname="Microsoft.Maui.Controls">
+    <type fullname="Microsoft.Maui.Controls.ResourceDictionary" preserve="all" />
+    <type fullname="Microsoft.Maui.Controls.Style" preserve="all" />
+    <type fullname="Microsoft.Maui.Controls.Setter" preserve="all" />
+    <type fullname="Microsoft.Maui.Controls.Frame" preserve="all" />
+    <type fullname="Microsoft.Maui.Controls.Button" preserve="all" />
+    <type fullname="Microsoft.Maui.Controls.Label" preserve="all" />
+    <type fullname="Microsoft.Maui.Controls.Switch" preserve="all" />
+    <type fullname="Microsoft.Maui.Controls.Image" preserve="all" />
+    <type fullname="Microsoft.Maui.Controls.BoxView" preserve="all" />
+    <type fullname="Microsoft.Maui.Controls.CheckBox" preserve="all" />
+    <type fullname="Microsoft.Maui.Controls.Entry" preserve="all" />
+    <type fullname="Microsoft.Maui.Controls.Picker" preserve="all" />
+    <type fullname="Microsoft.Maui.Controls.TimePicker" preserve="all" />
+    <type fullname="Microsoft.Maui.Controls.Slider" preserve="all" />
+  </assembly>
+
+  <!-- Preserve MAUI XAML infrastructure -->
+  <assembly fullname="Microsoft.Maui.Controls.Xaml">
+    <type fullname="Microsoft.Maui.Controls.Xaml.*" preserve="all" />
+  </assembly>
+</linker>

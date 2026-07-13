@@ -1,0 +1,1612 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+
+
+<?xaml-comp compile="true" ?>
+
+
+
+<ResourceDictionary
+
+
+
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+
+
+
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+
+
+
+
+
+
+    <!-- ===== Corner Radii (x:Double  EMAUI implicitly converts to CornerRadius) ===== -->
+
+
+
+    <x:Double x:Key="CardCornerRadius">14</x:Double>
+
+
+
+    <x:Double x:Key="CardCornerRadiusLg">16</x:Double>
+
+
+
+    <x:Double x:Key="CardCornerRadiusSm">12</x:Double>
+
+
+
+    <x:Int32 x:Key="ButtonCardCornerRadiusSm">12</x:Int32>
+
+
+
+    <x:Int32 x:Key="ButtonCornerRadius">10</x:Int32>
+
+
+
+    <x:Int32 x:Key="ButtonCornerRadiusSm">8</x:Int32>
+
+
+
+    <x:Int32 x:Key="ButtonCornerRadiusXs">6</x:Int32>
+
+
+
+    <x:Double x:Key="FrameButtonCornerRadiusXs">6</x:Double>
+
+
+
+    <x:Double x:Key="PillCornerRadius">8</x:Double>
+
+
+
+    <x:Double x:Key="ImageCardCornerRadius">10</x:Double>
+
+
+
+    <x:Double x:Key="RoundCircleRadius">20</x:Double>
+
+
+
+    <x:Int32 x:Key="IconButtonRadius">18</x:Int32>
+
+
+
+    <x:Int32 x:Key="RoundButtonRadius">20</x:Int32>
+
+
+
+
+
+
+
+    <!-- ===== Font Sizes ===== -->
+
+
+
+    <x:Double x:Key="PageTitleFontSize">22</x:Double>
+
+
+
+    <x:Double x:Key="SectionTitleFontSize">18</x:Double>
+
+
+
+    <x:Double x:Key="SectionSubtitleFontSize">16</x:Double>
+
+
+
+    <x:Double x:Key="BodyFontSize">14</x:Double>
+
+
+
+    <x:Double x:Key="BodySmallFontSize">13</x:Double>
+
+
+
+    <x:Double x:Key="CaptionFontSize">12</x:Double>
+
+
+
+    <x:Double x:Key="CaptionSmallFontSize">11</x:Double>
+
+
+
+    <x:Double x:Key="OverlineFontSize">10</x:Double>
+
+
+
+    <x:Double x:Key="FolderItemFontSize">15</x:Double>
+
+
+
+
+
+
+
+    <!-- ===== Spacing (StackLayout/VerticalStackLayout Spacing) ===== -->
+
+
+
+    <x:Double x:Key="SectionSpacing">16</x:Double>
+
+
+
+    <x:Double x:Key="GroupSpacing">14</x:Double>
+
+
+
+    <x:Double x:Key="ItemSpacing">12</x:Double>
+
+
+
+    <x:Double x:Key="CompactSpacing">8</x:Double>
+
+
+
+    <x:Double x:Key="TightSpacing">6</x:Double>
+
+
+
+    <x:Double x:Key="MinimalSpacing">4</x:Double>
+
+
+
+    <x:Double x:Key="MicroSpacing">2</x:Double>
+
+
+
+
+
+
+
+    <!-- ===== Button Heights ===== -->
+
+
+
+    <x:Double x:Key="PrimaryButtonHeight">50</x:Double>
+
+
+
+    <x:Double x:Key="StandardButtonHeight">44</x:Double>
+
+
+
+    <x:Double x:Key="CompactButtonHeight">38</x:Double>
+
+
+
+    <x:Double x:Key="SmallButtonHeight">36</x:Double>
+
+
+
+    <x:Double x:Key="MicroButtonHeight">32</x:Double>
+
+
+
+    <x:Double x:Key="TinyButtonHeight">26</x:Double>
+
+
+
+    <x:Double x:Key="RoundIconButtonSize">40</x:Double>
+
+
+
+    <x:Double x:Key="SmallIconButtonSize">36</x:Double>
+
+
+
+
+
+
+
+    <!-- ===== Card Heights ===== -->
+
+
+
+    <x:Double x:Key="ThumbnailCardHeight">140</x:Double>
+
+
+
+    <x:Double x:Key="PreviewCardHeight">390</x:Double>
+
+
+
+    <x:Double x:Key="PreviewCardWidth">220</x:Double>
+
+
+
+
+
+
+
+    <!-- ===== Margins ===== -->
+
+
+
+    <Thickness x:Key="PageMargin">16</Thickness>
+
+
+
+    <Thickness x:Key="BannerMargin">16,16,16,8</Thickness>
+
+
+
+    <Thickness x:Key="ContentMargin">16,0,16,16</Thickness>
+
+
+
+    <Thickness x:Key="CardMargin">0,8</Thickness>
+
+
+
+    <Thickness x:Key="CardMarginTight">0,6</Thickness>
+
+
+
+    <Thickness x:Key="CardMarginMicro">0,4</Thickness>
+
+
+
+    <Thickness x:Key="BottomActionMargin">0,10,0,20</Thickness>
+
+
+
+    <Thickness x:Key="SectionBottomMargin">0,6,0,0</Thickness>
+
+
+
+    <Thickness x:Key="PillGroupMargin">0,4,0,0</Thickness>
+
+
+
+    <Thickness x:Key="FolderListMargin">0,4,0,0</Thickness>
+
+
+
+    <Thickness x:Key="InstructionMargin">0,4,0,0</Thickness>
+
+
+
+    <Thickness x:Key="EditorCanvasMargin">0,0,0,16</Thickness>
+
+
+
+    <Thickness x:Key="ButtonRowMargin">0,4,0,0</Thickness>
+
+
+
+    <Thickness x:Key="EmptyStateMargin">0,40,0,0</Thickness>
+
+
+
+
+
+
+
+    <!-- ===== Paddings ===== -->
+
+
+
+    <Thickness x:Key="CardPadding">16</Thickness>
+
+
+
+    <Thickness x:Key="CardPaddingCompact">14</Thickness>
+
+
+
+    <Thickness x:Key="CardPaddingTight">10</Thickness>
+
+
+
+    <Thickness x:Key="PillPadding">8,4</Thickness>
+
+
+
+    <Thickness x:Key="PillPaddingCompact">6,2</Thickness>
+
+
+
+    <Thickness x:Key="ButtonPaddingMd">14,0</Thickness>
+
+
+
+    <Thickness x:Key="ButtonPaddingSm">12,0</Thickness>
+
+
+
+    <Thickness x:Key="ButtonPaddingLg">20,10</Thickness>
+
+
+
+    <Thickness x:Key="ButtonPaddingXs">10,0</Thickness>
+
+
+
+    <Thickness x:Key="EmptyStatePadding">30</Thickness>
+
+
+
+    <Thickness x:Key="BannerPadding">16,12</Thickness>
+
+
+
+    <Thickness x:Key="BannerPaddingSm">16,8</Thickness>
+
+
+
+    <Thickness x:Key="FolderItemPadding">16,14</Thickness>
+
+
+
+
+
+
+
+    <!-- ===== Separator Thickness ===== -->
+
+
+
+    <x:Double x:Key="SeparatorHeight">1</x:Double>
+
+
+
+
+
+
+
+    <!-- ===== Reusable Named Styles ===== -->
+
+
+
+
+
+
+
+    <!-- Card Border: standard clickable/detail card -->
+
+
+
+    <Style x:Key="CardBorder" TargetType="Border">
+
+
+
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource LightCardBg}, Dark={StaticResource DarkCardBg}}" />
+
+
+
+        <Setter Property="StrokeShape">
+
+
+
+            <Setter.Value>
+
+
+
+                <RoundRectangle CornerRadius="{StaticResource CardCornerRadius}" />
+
+
+
+            </Setter.Value>
+
+
+
+        </Setter>
+
+
+
+        <Setter Property="Stroke" Value="{AppThemeBinding Light={StaticResource LightBorder}, Dark={StaticResource DarkBorder}}" />
+
+
+
+        <Setter Property="StrokeThickness" Value="1" />
+
+
+
+        <Setter Property="Padding" Value="{StaticResource CardPadding}" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Banner Border: header/intro card at page top -->
+
+
+
+    <Style x:Key="BannerBorder" TargetType="Border">
+        <Setter Property="Padding" Value="{StaticResource BannerPadding}" />
+
+
+
+        <Setter Property="Margin" Value="{StaticResource BannerMargin}" />
+
+
+
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource LightCardBg}, Dark={StaticResource DarkCardBg}}" />
+
+
+
+        <Setter Property="StrokeShape">
+
+
+
+            <Setter.Value>
+
+
+
+                <RoundRectangle CornerRadius="{StaticResource CardCornerRadiusLg}" />
+
+
+
+            </Setter.Value>
+
+
+
+        </Setter>
+
+
+
+        <Setter Property="Stroke" Value="{AppThemeBinding Light={StaticResource LightBorder}, Dark={StaticResource DarkBorder}}" />
+
+
+
+        <Setter Property="StrokeThickness" Value="1" />
+
+
+
+        <Setter Property="Shadow">
+
+
+
+            <Setter.Value>
+
+
+
+                <Shadow Offset="0,2" Radius="4" Opacity="0.15" Brush="Black" />
+
+
+
+            </Setter.Value>
+
+
+
+        </Setter>
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Section Border: grouping related controls -->
+
+
+
+    <Style x:Key="SectionBorder" TargetType="Border">
+
+
+
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource LightCardBg}, Dark={StaticResource DarkCardBg}}" />
+
+
+
+        <Setter Property="StrokeShape">
+
+
+
+            <Setter.Value>
+
+
+
+                <RoundRectangle CornerRadius="{StaticResource CardCornerRadius}" />
+
+
+
+            </Setter.Value>
+
+
+
+        </Setter>
+
+
+
+        <Setter Property="Stroke" Value="{AppThemeBinding Light={StaticResource LightBorder}, Dark={StaticResource DarkBorder}}" />
+
+
+
+        <Setter Property="StrokeThickness" Value="1" />
+
+
+
+        <Setter Property="Padding" Value="{StaticResource CardPadding}" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Embedded Border: nested inside a section card -->
+
+
+
+    <Style x:Key="EmbeddedBorder" TargetType="Border">
+
+
+
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}" />
+
+
+
+        <Setter Property="StrokeShape">
+
+
+
+            <Setter.Value>
+
+
+
+                <RoundRectangle CornerRadius="{StaticResource PillCornerRadius}" />
+
+
+
+            </Setter.Value>
+
+
+
+        </Setter>
+
+
+
+        <Setter Property="Stroke" Value="Transparent" />
+
+
+
+        <Setter Property="StrokeThickness" Value="0" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Info Pill Border: small label badge -->
+
+
+
+    <Style x:Key="InfoPillBorder" TargetType="Border">
+
+
+
+        <Setter Property="Padding" Value="{StaticResource PillPadding}" />
+
+
+
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}" />
+
+
+
+        <Setter Property="StrokeShape">
+
+
+
+            <Setter.Value>
+
+
+
+                <RoundRectangle CornerRadius="{StaticResource PillCornerRadius}" />
+
+
+
+            </Setter.Value>
+
+
+
+        </Setter>
+
+
+
+        <Setter Property="Stroke" Value="Transparent" />
+
+
+
+        <Setter Property="StrokeThickness" Value="0" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Encrypted Badge Pill Border -->
+
+
+
+    <Style x:Key="EncryptedPillBorder" TargetType="Border">
+
+
+
+        <Setter Property="Padding" Value="{StaticResource PillPaddingCompact}" />
+
+
+
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}" />
+
+
+
+        <Setter Property="StrokeShape">
+
+
+
+            <Setter.Value>
+
+
+
+                <RoundRectangle CornerRadius="{StaticResource FrameButtonCornerRadiusXs}" />
+
+
+
+            </Setter.Value>
+
+
+
+        </Setter>
+
+
+
+        <Setter Property="Stroke" Value="Transparent" />
+
+
+
+        <Setter Property="StrokeThickness" Value="0" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Folder Item Border -->
+
+
+
+    <Style x:Key="FolderItemBorder" TargetType="Border">
+
+
+
+        <Setter Property="Padding" Value="{StaticResource CardPaddingTight}" />
+
+
+
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}" />
+
+
+
+        <Setter Property="StrokeShape">
+
+
+
+            <Setter.Value>
+
+
+
+                <RoundRectangle CornerRadius="{StaticResource PillCornerRadius}" />
+
+
+
+            </Setter.Value>
+
+
+
+        </Setter>
+
+
+
+        <Setter Property="Stroke" Value="Transparent" />
+
+
+
+        <Setter Property="StrokeThickness" Value="0" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Primary Action Button -->
+
+
+
+    <Style x:Key="PrimaryButton" TargetType="Button">
+
+
+
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}" />
+
+
+
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPrimaryText}}" />
+
+
+
+        <Setter Property="FontAttributes" Value="Bold" />
+
+
+
+        <Setter Property="CornerRadius" Value="{StaticResource ButtonCornerRadiusSm}" />
+
+
+
+        <Setter Property="HeightRequest" Value="{StaticResource CompactButtonHeight}" />
+
+
+
+        <Setter Property="Padding" Value="{StaticResource ButtonPaddingMd}" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Secondary Button -->
+
+
+
+    <Style x:Key="SecondaryButton" TargetType="Button">
+
+
+
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkBorder}}" />
+
+
+
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPrimaryText}}" />
+
+
+
+        <Setter Property="CornerRadius" Value="{StaticResource ButtonCornerRadiusSm}" />
+
+
+
+        <Setter Property="HeightRequest" Value="{StaticResource CompactButtonHeight}" />
+
+
+
+        <Setter Property="Padding" Value="{StaticResource ButtonPaddingMd}" />
+
+
+
+        <Setter Property="FontAttributes" Value="Bold" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Delete / Danger Button -->
+
+
+
+    <Style x:Key="DangerButton" TargetType="Button">
+
+
+
+        <Setter Property="BackgroundColor" Value="#CF6679" />
+
+
+
+        <Setter Property="TextColor" Value="White" />
+
+
+
+        <Setter Property="CornerRadius" Value="{StaticResource ButtonCornerRadiusSm}" />
+
+
+
+        <Setter Property="Padding" Value="{StaticResource ButtonPaddingSm}" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Standard Action Button (large, bottom-bar) -->
+
+
+
+    <Style x:Key="ActionButton" TargetType="Button">
+
+
+
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}" />
+
+
+
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPrimaryText}}" />
+
+
+
+        <Setter Property="FontAttributes" Value="Bold" />
+
+
+
+        <Setter Property="CornerRadius" Value="{StaticResource ButtonCardCornerRadiusSm}" />
+
+
+
+        <Setter Property="HeightRequest" Value="{StaticResource PrimaryButtonHeight}" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Save / Confirm Button -->
+
+
+
+    <Style x:Key="SaveButton" TargetType="Button">
+
+
+
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkBorder}}" />
+
+
+
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPrimaryText}}" />
+
+
+
+        <Setter Property="FontAttributes" Value="Bold" />
+
+
+
+        <Setter Property="CornerRadius" Value="{StaticResource ButtonCardCornerRadiusSm}" />
+
+
+
+        <Setter Property="HeightRequest" Value="{StaticResource PrimaryButtonHeight}" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Inline Small Button (e.g. Settings, Test, Delete in list) -->
+
+
+
+    <Style x:Key="InlinePrimaryButton" TargetType="Button">
+
+
+
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}" />
+
+
+
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPrimaryText}}" />
+
+
+
+        <Setter Property="CornerRadius" Value="{StaticResource ButtonCornerRadiusSm}" />
+
+
+
+        <Setter Property="HeightRequest" Value="{StaticResource SmallButtonHeight}" />
+
+
+
+        <Setter Property="Padding" Value="{StaticResource ButtonPaddingSm}" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Transparent Outline Button -->
+
+
+
+    <Style x:Key="OutlineButton" TargetType="Button">
+
+
+
+        <Setter Property="BackgroundColor" Value="Transparent" />
+
+
+
+        <Setter Property="BorderWidth" Value="1" />
+
+
+
+        <Setter Property="BorderColor" Value="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}" />
+
+
+
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}" />
+
+
+
+        <Setter Property="FontSize" Value="{StaticResource OverlineFontSize}" />
+
+
+
+        <Setter Property="HeightRequest" Value="{StaticResource TinyButtonHeight}" />
+
+
+
+        <Setter Property="Padding" Value="8,0" />
+
+
+
+        <Setter Property="CornerRadius" Value="{StaticResource ButtonCornerRadiusXs}" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Page Title Label (top banner title) -->
+
+
+
+    <Style x:Key="PageTitleLabel" TargetType="Label">
+
+
+
+        <Setter Property="FontSize" Value="{StaticResource PageTitleFontSize}" />
+
+
+
+        <Setter Property="FontAttributes" Value="Bold" />
+
+
+
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Section Title Label -->
+
+
+
+    <Style x:Key="SectionTitleLabel" TargetType="Label">
+
+
+
+        <Setter Property="FontSize" Value="{StaticResource SectionTitleFontSize}" />
+
+
+
+        <Setter Property="FontAttributes" Value="Bold" />
+
+
+
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Section Subtitle Label -->
+
+
+
+    <Style x:Key="SectionSubtitleLabel" TargetType="Label">
+
+
+
+        <Setter Property="FontSize" Value="{StaticResource SectionSubtitleFontSize}" />
+
+
+
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Card Title Label (collection list cards) -->
+
+
+
+    <Style x:Key="CardTitleLabel" TargetType="Label">
+
+
+
+        <Setter Property="FontSize" Value="{StaticResource SectionTitleFontSize}" />
+
+
+
+        <Setter Property="FontAttributes" Value="Bold" />
+
+
+
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Subtitle Label (smaller descriptive text) -->
+
+
+
+    <Style x:Key="SubtitleLabel" TargetType="Label">
+
+
+
+        <Setter Property="FontSize" Value="{StaticResource BodyFontSize}" />
+
+
+
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkSecondaryText}}" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Caption Label (field labels, hints) -->
+
+
+
+    <Style x:Key="CaptionLabel" TargetType="Label">
+
+
+
+        <Setter Property="FontSize" Value="{StaticResource CaptionFontSize}" />
+
+
+
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkSecondaryText}}" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Small Caption Label (pills, badges, day labels) -->
+
+
+
+    <Style x:Key="SmallCaptionLabel" TargetType="Label">
+
+
+
+        <Setter Property="FontSize" Value="{StaticResource CaptionSmallFontSize}" />
+
+
+
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkSecondaryText}}" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Overline Label (tiny labels) -->
+
+
+
+    <Style x:Key="OverlineLabel" TargetType="Label">
+
+
+
+        <Setter Property="FontSize" Value="{StaticResource OverlineFontSize}" />
+
+
+
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkSecondaryText}}" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Body Bold Label -->
+
+
+
+    <Style x:Key="BodyBoldLabel" TargetType="Label">
+
+
+
+        <Setter Property="FontSize" Value="{StaticResource BodySmallFontSize}" />
+
+
+
+        <Setter Property="FontAttributes" Value="Bold" />
+
+
+
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Body Small Label -->
+
+
+
+    <Style x:Key="BodySmallLabel" TargetType="Label">
+
+
+
+        <Setter Property="FontSize" Value="{StaticResource BodySmallFontSize}" />
+
+
+
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkSecondaryText}}" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Accent Small Caption (e.g. schedule hint) -->
+
+
+
+    <Style x:Key="AccentCaptionLabel" TargetType="Label">
+
+
+
+        <Setter Property="FontSize" Value="{StaticResource BodySmallFontSize}" />
+
+
+
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource LightAccent}}" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Status Banner Label -->
+
+
+
+    <Style x:Key="StatusBannerLabel" TargetType="Label">
+
+
+
+        <Setter Property="FontSize" Value="{StaticResource CaptionFontSize}" />
+
+
+
+        <Setter Property="FontAttributes" Value="Bold" />
+
+
+
+        <Setter Property="HorizontalOptions" Value="Center" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Folder Item Name Label -->
+
+
+
+    <Style x:Key="FolderItemLabel" TargetType="Label">
+
+
+
+        <Setter Property="FontSize" Value="{StaticResource FolderItemFontSize}" />
+
+
+
+        <Setter Property="FontAttributes" Value="Bold" />
+
+
+
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Empty State Label -->
+
+
+
+    <Style x:Key="EmptyStateLabel" TargetType="Label">
+
+
+
+        <Setter Property="FontSize" Value="{StaticResource SectionTitleFontSize}" />
+
+
+
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkSecondaryText}}" />
+
+
+
+        <Setter Property="HorizontalOptions" Value="Center" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Empty State Detail Label -->
+
+
+
+    <Style x:Key="EmptyStateDetailLabel" TargetType="Label">
+
+
+
+        <Setter Property="FontSize" Value="{StaticResource BodyFontSize}" />
+
+
+
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkSecondaryText}}" />
+
+
+
+        <Setter Property="HorizontalOptions" Value="Center" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Input Field Label -->
+
+
+
+    <Style x:Key="InputLabel" TargetType="Label">
+
+
+
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkSecondaryText}}" />
+
+
+
+        <Setter Property="FontSize" Value="{StaticResource CaptionFontSize}" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Thumbnail Card (clipped image container) -->
+
+
+
+    <Style x:Key="ThumbnailBorder" TargetType="Border">
+
+
+
+        <Setter Property="Padding" Value="0" />
+
+<Setter Property="StrokeShape">
+
+
+
+            <Setter.Value>
+
+
+
+                <RoundRectangle CornerRadius="{StaticResource ImageCardCornerRadius}" />
+
+
+
+            </Setter.Value>
+
+
+
+        </Setter>
+
+
+
+        <Setter Property="HeightRequest" Value="{StaticResource ThumbnailCardHeight}" />
+
+
+
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}" />
+
+
+
+        <Setter Property="Stroke" Value="Transparent" />
+
+
+
+        <Setter Property="StrokeThickness" Value="0" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- ===== Collection Card Thumbnail Collage ===== -->
+    <x:Double x:Key="CollageCellSpacing">3</x:Double>
+    <x:Double x:Key="ShimmerStripeWidth">90</x:Double>
+    <Color x:Key="ShimmerHighlight">#40FFFFFF</Color>
+
+    <!-- Skeleton tile shown while previews load -->
+    <Style x:Key="SkeletonTile" TargetType="BoxView">
+        <Setter Property="Color" Value="{AppThemeBinding Light={StaticResource LightBorder}, Dark={StaticResource DarkBorder}}" />
+        <Setter Property="CornerRadius" Value="4" />
+    </Style>
+
+    <!-- Empty-state placeholder labels -->
+    <Style x:Key="PlaceholderLabel" TargetType="Label">
+        <Setter Property="FontSize" Value="{StaticResource CaptionSmallFontSize}" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="HorizontalTextAlignment" Value="Center" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkSecondaryText}}" />
+    </Style>
+
+    <Style x:Key="PlaceholderSubLabel" TargetType="Label">
+        <Setter Property="FontSize" Value="{StaticResource OverlineFontSize}" />
+        <Setter Property="HorizontalTextAlignment" Value="Center" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkSecondaryText}}" />
+    </Style>
+
+    <!-- Preview Canvas Frame (image editor preview) -->
+
+
+
+    <Style x:Key="PreviewCanvasBorder" TargetType="Border">
+
+
+
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource LightCardBg}, Dark={StaticResource DarkCardBg}}" />
+
+
+
+        <Setter Property="StrokeShape">
+
+
+
+            <Setter.Value>
+
+
+
+                <RoundRectangle CornerRadius="{StaticResource CardCornerRadiusLg}" />
+
+
+
+            </Setter.Value>
+
+
+
+        </Setter>
+
+
+
+        <Setter Property="Stroke" Value="{AppThemeBinding Light={StaticResource LightBorder}, Dark={StaticResource DarkBorder}}" />
+
+
+
+        <Setter Property="StrokeThickness" Value="1" />
+
+
+
+        <Setter Property="Padding" Value="0" />
+
+
+
+        <Setter Property="Shadow">
+
+
+
+            <Setter.Value>
+
+
+
+                <Shadow Offset="0,2" Radius="4" Opacity="0.15" Brush="Black" />
+
+
+
+            </Setter.Value>
+
+
+
+        </Setter>
+
+
+
+    </Style>
+
+
+
+
+
+
+
+    <!-- Switch (Themed) -->
+
+
+
+    <Style x:Key="ThemedSwitch" TargetType="Switch">
+
+
+
+        <Setter Property="ThumbColor" Value="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkPrimaryText}}" />
+
+
+
+        <Setter Property="OnColor" Value="{AppThemeBinding Light={StaticResource LightBorder}, Dark={StaticResource DarkAccent}}" />
+
+
+
+    </Style>
+
+
+
+
+
+
+
+</ResourceDictionary>
+
+
+

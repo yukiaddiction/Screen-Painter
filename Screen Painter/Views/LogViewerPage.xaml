@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Screen_Painter.ViewModels"
+             x:Class="Screen_Painter.Views.LogViewerPage"
+             x:DataType="vm:LogViewerViewModel"
+             Title="Application Logs"
+             BackgroundColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}">
+
+    <Grid RowDefinitions="Auto, Auto, *">
+        <!-- Top Bar: Refresh + Open File -->
+        <HorizontalStackLayout Grid.Row="0" Padding="16,12,16,4" Spacing="10"
+                               BackgroundColor="{AppThemeBinding Light={StaticResource LightCardBg}, Dark={StaticResource DarkCardBg}}">
+            <Button Text="↻ Refresh" Command="{Binding RefreshCommand}"
+                    BackgroundColor="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}"
+                    TextColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPrimaryText}}"
+                    CornerRadius="8" HeightRequest="38" Padding="14,0" FontSize="13" />
+            <Button Text="📂 Open File" Command="{Binding OpenFileCommand}"
+                    BackgroundColor="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkBorder}}"
+                    TextColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPrimaryText}}"
+                    CornerRadius="8" HeightRequest="38" Padding="14,0" FontSize="13" />
+            <Button Text="📋 Copy" Command="{Binding CopyCommand}"
+                    BackgroundColor="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkBorder}}"
+                    TextColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPrimaryText}}"
+                    CornerRadius="8" HeightRequest="38" Padding="14,0" FontSize="13" />
+        </HorizontalStackLayout>
+
+        <!-- Mode Toggle Button -->
+        <Button Grid.Row="1" Text="{Binding ModeLabel}" Command="{Binding ToggleModeCommand}"
+                Margin="16,6,16,8" HeightRequest="34" FontSize="12" CornerRadius="6"
+                BackgroundColor="{AppThemeBinding Light={StaticResource LightBorder}, Dark={StaticResource DarkBorder}}"
+                TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" />
+
+        <!-- Log Content -->
+        <ScrollView Grid.Row="2" Padding="16,0,16,16">
+            <Label Text="{Binding LogContent}" FontFamily="OpenSansRegular" FontSize="11"
+                   TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}"
+                   BackgroundColor="{AppThemeBinding Light={StaticResource LightCardBg}, Dark={StaticResource DarkCardBg}}"
+                   Padding="14" LineBreakMode="WordWrap" />
+        </ScrollView>
+    </Grid>
+</ContentPage>

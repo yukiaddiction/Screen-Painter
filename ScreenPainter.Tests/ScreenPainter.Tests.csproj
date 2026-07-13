@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.2" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <!--
+    The app is a multi-target MAUI project (net9.0-android; etc.) with no plain net9.0 TFM,
+    so it cannot be referenced via ProjectReference. Instead we compile-link the pure,
+    platform-agnostic source files (BCL + System.Text.Json only, no MAUI/Android deps)
+    directly into this test assembly to exercise the real production code.
+  -->
+  <ItemGroup>
+    <Compile Include="..\Screen Painter\Models\*.cs" />
+    <Compile Include="..\Screen Painter\Services\Scheduling\RotationGate.cs" />
+    <Compile Include="..\Screen Painter\Services\Scheduling\SchedulePolicy.cs" />
+  </ItemGroup>
+
+</Project>

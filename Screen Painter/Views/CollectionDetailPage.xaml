@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Screen_Painter.ViewModels"
+             xmlns:models="clr-namespace:Screen_Painter.Models"
+             x:Class="Screen_Painter.Views.CollectionDetailPage"
+             x:DataType="vm:CollectionDetailViewModel"
+             Title="Configure Collection"
+             BackgroundColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="{StaticResource PageMargin}" Spacing="{StaticResource SectionSpacing}">
+            <!-- Basic Config -->
+            <Border Style="{StaticResource SectionBorder}">
+                <VerticalStackLayout Spacing="{StaticResource ItemSpacing}">
+                    <Label Text="General Settings" Style="{StaticResource SectionTitleLabel}" />
+
+                    <Label Text="Collection Name" Style="{StaticResource InputLabel}" />
+                    <Entry Text="{Binding CurrentCollection.Name}" 
+                           TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" 
+                           PlaceholderColor="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkSecondaryText}}" 
+                           BackgroundColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}" />
+
+                    <Grid ColumnDefinitions="*, *" ColumnSpacing="{StaticResource ItemSpacing}">
+                        <VerticalStackLayout Grid.Column="0" Spacing="{StaticResource MinimalSpacing}">
+                            <Label Text="Target Screen" Style="{StaticResource InputLabel}" />
+                            <Picker ItemsSource="{Binding TargetScreens}" 
+                                     SelectedItem="{Binding CurrentCollection.Target}" 
+                                     TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" 
+                                     BackgroundColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}" />
+                        </VerticalStackLayout>
+
+                        <VerticalStackLayout Grid.Column="1" Spacing="{StaticResource MinimalSpacing}">
+                            <Label Text="Rotation Triggers" Style="{StaticResource InputLabel}" />
+                            <Label Text="Enable one or both" Style="{StaticResource SmallCaptionLabel}" />
+                        </VerticalStackLayout>
+                    </Grid>
+
+                    <!-- Trigger Toggles (Timer + Screen Wake can run simultaneously) -->
+                    <Grid ColumnDefinitions="*, Auto" Margin="{StaticResource InstructionMargin}">
+                        <VerticalStackLayout Grid.Column="0" Spacing="{StaticResource MicroSpacing}">
+                            <Label Text="Rotate on Timer" Style="{StaticResource BodyBoldLabel}" 
+                                   TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" />
+                            <Label Text="Change wallpaper on a fixed interval" Style="{StaticResource SmallCaptionLabel}" />
+                        </VerticalStackLayout>
+                        <Switch Grid.Column="1" IsToggled="{Binding IsTimerEnabled}" Style="{StaticResource ThemedSwitch}" VerticalOptions="Center" />
+                    </Grid>
+
+                    <!-- Timer Interval Input (Visible ONLY when Timer trigger is enabled) -->
+                    <VerticalStackLayout Spacing="{StaticResource MinimalSpacing}" IsVisible="{Binding IsTimerVisible}">
+                        <Label Text="Timer Interval (Minutes, min 1)" Style="{StaticResource InputLabel}" />
+                        <Entry Text="{Binding CurrentCollection.TimerIntervalMinutes}" Keyboard="Numeric" 
+                               TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" 
+                               BackgroundColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}" />
+                    </VerticalStackLayout>
+
+                    <!-- Screen Wake Toggle -->
+                    <Grid ColumnDefinitions="*, Auto" Margin="{StaticResource InstructionMargin}">
+                        <VerticalStackLayout Grid.Column="0" Spacing="{StaticResource MicroSpacing}">
+                            <Label Text="Rotate on Screen Wake" Style="{StaticResource BodyBoldLabel}" 
+                                   TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" />
+                            <Label Text="Change wallpaper when the screen turns off" Style="{StaticResource SmallCaptionLabel}" />
+                        </VerticalStackLayout>
+                        <Switch Grid.Column="1" IsToggled="{Binding IsScreenAwakeEnabled}" Style="{StaticResource ThemedSwitch}" VerticalOptions="Center" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Time Window & Day Schedule -->
+            <Border Style="{StaticResource SectionBorder}">
+                <VerticalStackLayout Spacing="{StaticResource ItemSpacing}">
+                    <Grid ColumnDefinitions="*, Auto">
+                        <VerticalStackLayout Grid.Column="0">
+                            <Label Text="Time &amp; Day Schedule" Style="{StaticResource SectionTitleLabel}" />
+                            <Label Text="Restrict rotation to specific times &amp; days" Style="{StaticResource CaptionLabel}" />
+                        </VerticalStackLayout>
+                        <Switch IsToggled="{Binding CurrentCollection.IsScheduleEnabled}" Style="{StaticResource ThemedSwitch}" />
+                    </Grid>
+
+                    <!-- Schedule Controls (Visible when schedule enabled) -->
+                    <VerticalStackLayout Spacing="{StaticResource ItemSpacing}" IsVisible="{Binding CurrentCollection.IsScheduleEnabled}">
+                        <Label Text="Active Days (Unchecked = Everyday Fallback)" Style="{StaticResource AccentCaptionLabel}" />
+                        
+                        <!-- Day Selection Grid -->
+                        <Grid ColumnDefinitions="*,*,*,*,*,*,*" ColumnSpacing="{StaticResource MinimalSpacing}">
+                            <!-- Sun -->
+                            <VerticalStackLayout Grid.Column="0" HorizontalOptions="Center" Spacing="{StaticResource MicroSpacing}">
+                                <Label Text="Sun" Style="{StaticResource OverlineLabel}" HorizontalOptions="Center" />
+                                <CheckBox IsChecked="{Binding IsSundaySelected}" Color="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}" HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                            <!-- Mon -->
+                            <VerticalStackLayout Grid.Column="1" HorizontalOptions="Center" Spacing="{StaticResource MicroSpacing}">
+                                <Label Text="Mon" Style="{StaticResource OverlineLabel}" HorizontalOptions="Center" />
+                                <CheckBox IsChecked="{Binding IsMondaySelected}" Color="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}" HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                            <!-- Tue -->
+                            <VerticalStackLayout Grid.Column="2" HorizontalOptions="Center" Spacing="{StaticResource MicroSpacing}">
+                                <Label Text="Tue" Style="{StaticResource OverlineLabel}" HorizontalOptions="Center" />
+                                <CheckBox IsChecked="{Binding IsTuesdaySelected}" Color="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}" HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                            <!-- Wed -->
+                            <VerticalStackLayout Grid.Column="3" HorizontalOptions="Center" Spacing="{StaticResource MicroSpacing}">
+                                <Label Text="Wed" Style="{StaticResource OverlineLabel}" HorizontalOptions="Center" />
+                                <CheckBox IsChecked="{Binding IsWednesdaySelected}" Color="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}" HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                            <!-- Thu -->
+                            <VerticalStackLayout Grid.Column="4" HorizontalOptions="Center" Spacing="{StaticResource MicroSpacing}">
+                                <Label Text="Thu" Style="{StaticResource OverlineLabel}" HorizontalOptions="Center" />
+                                <CheckBox IsChecked="{Binding IsThursdaySelected}" Color="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}" HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                            <!-- Fri -->
+                            <VerticalStackLayout Grid.Column="5" HorizontalOptions="Center" Spacing="{StaticResource MicroSpacing}">
+                                <Label Text="Fri" Style="{StaticResource OverlineLabel}" HorizontalOptions="Center" />
+                                <CheckBox IsChecked="{Binding IsFridaySelected}" Color="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}" HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                            <!-- Sat -->
+                            <VerticalStackLayout Grid.Column="6" HorizontalOptions="Center" Spacing="{StaticResource MicroSpacing}">
+                                <Label Text="Sat" Style="{StaticResource OverlineLabel}" HorizontalOptions="Center" />
+                                <CheckBox IsChecked="{Binding IsSaturdaySelected}" Color="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}" HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                        </Grid>
+
+                        <!-- Time Window -->
+                        <Grid ColumnDefinitions="*, *" ColumnSpacing="{StaticResource ItemSpacing}" Margin="{StaticResource SectionBottomMargin}">
+                            <VerticalStackLayout Grid.Column="0" Spacing="{StaticResource MinimalSpacing}">
+                                <Label Text="Start Time" Style="{StaticResource InputLabel}" />
+                                <TimePicker Time="{Binding CurrentCollection.ScheduleStartTime}" 
+                                            TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" 
+                                            BackgroundColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}" />
+                            </VerticalStackLayout>
+
+                            <VerticalStackLayout Grid.Column="1" Spacing="{StaticResource MinimalSpacing}">
+                                <Label Text="End Time" Style="{StaticResource InputLabel}" />
+                                <TimePicker Time="{Binding CurrentCollection.ScheduleEndTime}" 
+                                            TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" 
+                                            BackgroundColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}" />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Folder Sources (Local + Saved Cloud) -->
+            <Border Style="{StaticResource SectionBorder}">
+                <VerticalStackLayout Spacing="{StaticResource ItemSpacing}">
+                    <Label Text="Folder Sources" Style="{StaticResource SectionTitleLabel}" />
+
+                    <HorizontalStackLayout Spacing="{StaticResource CompactSpacing}">
+                        <Button Text="+ Local Folder" Clicked="OnAddLocalFolderClicked" Style="{StaticResource SecondaryButton}" />
+                        <Button Text="+ Saved Cloud Account" Command="{Binding AddSavedCloudAccountCommand}" 
+                                IsVisible="{Binding HasSavedCloudAccounts}" Style="{StaticResource PrimaryButton}" />
+                    </HorizontalStackLayout>
+
+                    <!-- Notice if no cloud accounts exist in Settings -->
+                    <Border Style="{StaticResource EmbeddedBorder}" Padding="{StaticResource ItemSpacing}" Margin="{StaticResource InstructionMargin}">
+                        <Grid ColumnDefinitions="*, Auto">
+                            <VerticalStackLayout Grid.Column="0" Spacing="{StaticResource MicroSpacing}">
+                                <Label Text="Cloud Storage" Style="{StaticResource BodyBoldLabel}" 
+                                       TextColor="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource LightAccent}}" />
+                                <Label Text="Configure cloud accounts (WebDAV/OAuth) in Settings to add cloud folders." Style="{StaticResource SmallCaptionLabel}" />
+                            </VerticalStackLayout>
+                            <Button Grid.Column="1" Text="Settings" Command="{Binding GoToSettingsCommand}" 
+                                    BackgroundColor="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}" 
+                                    TextColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPrimaryText}}" 
+                                    FontSize="{StaticResource CaptionSmallFontSize}" HeightRequest="{StaticResource MicroButtonHeight}" Padding="{StaticResource ButtonPaddingXs}" CornerRadius="{StaticResource ButtonCornerRadiusXs}" VerticalOptions="Center" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Selection Status Banner -->
+                    <Border Style="{StaticResource EmbeddedBorder}" 
+                           Stroke="{AppThemeBinding Light={StaticResource LightBorder}, Dark={StaticResource DarkBorder}}" 
+                           StrokeThickness="1"
+                           Padding="{StaticResource CardPaddingTight}" IsVisible="{Binding IsFolderStatusVisible}">
+                        <Label Text="{Binding FolderSelectionStatusMessage}" Style="{StaticResource StatusBannerLabel}" 
+                               TextColor="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource LightAccent}}" />
+                    </Border>
+
+                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding FolderSources}" Margin="{StaticResource FolderListMargin}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="models:FolderSource">
+                                <Border Margin="{StaticResource CardMarginMicro}" Style="{StaticResource FolderItemBorder}">
+                                    <Grid ColumnDefinitions="*, Auto">
+                                        <VerticalStackLayout Grid.Column="0">
+                                            <HorizontalStackLayout Spacing="{StaticResource TightSpacing}">
+                                                <Label Text="✓" TextColor="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource LightAccent}}" FontAttributes="Bold" />
+                                                <Label Text="{Binding Name}" TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" FontAttributes="Bold" />
+                                            </HorizontalStackLayout>
+                                            <Label Text="{Binding PathOrUrl}" Style="{StaticResource CaptionLabel}" LineBreakMode="MiddleTruncation" />
+                                            <Label Text="{Binding Type, StringFormat='Storage: {0}'}" Style="{StaticResource SmallCaptionLabel}" 
+                                                   TextColor="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource LightAccent}}" />
+                                        </VerticalStackLayout>
+                                        <Button x:DataType="{x:Null}" Grid.Column="1" Text="X" 
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CollectionDetailViewModel}}, Path=RemoveFolderCommand}" 
+                                                CommandParameter="{Binding .}" Style="{StaticResource DangerButton}" 
+                                                WidthRequest="{StaticResource SmallIconButtonSize}" HeightRequest="{StaticResource SmallIconButtonSize}" CornerRadius="{StaticResource IconButtonRadius}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Framing & Image Adjustments -->
+            <Button Text="Adjust Picture Framing / Ratio" Command="{Binding EditFramingCommand}" Style="{StaticResource ActionButton}" HeightRequest="{StaticResource StandardButtonHeight}" />
+
+            <!-- Action Buttons: Save & Re-apply Now -->
+            <Grid ColumnDefinitions="*, *" ColumnSpacing="{StaticResource ItemSpacing}" Margin="{StaticResource BottomActionMargin}">
+                <Button Grid.Column="0" Text="Re-apply &amp; Refresh" Command="{Binding ReapplyNowCommand}" Style="{StaticResource ActionButton}" />
+                <Button Grid.Column="1" Text="Save Collection" Command="{Binding SaveCommand}" Style="{StaticResource SaveButton}" />
+            </Grid>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

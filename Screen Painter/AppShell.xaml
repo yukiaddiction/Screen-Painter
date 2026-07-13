@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="Screen_Painter.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:views="clr-namespace:Screen_Painter.Views"
+    Title="Screen Painter"
+    FlyoutBehavior="Flyout"
+    FlyoutBackgroundColor="{AppThemeBinding Light={StaticResource LightBorder}, Dark={StaticResource DarkBorder}}"
+    BackgroundColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}">
+
+    <!-- Left Flyout Header Banner -->
+    <Shell.FlyoutHeader>
+        <Grid HeightRequest="140" 
+              BackgroundColor="{AppThemeBinding Light={StaticResource LightCardBg}, Dark={StaticResource DarkCardBg}}" 
+              Padding="20">
+            <VerticalStackLayout VerticalOptions="End" Spacing="4">
+                <Label Text="Screen Painter" FontSize="22" FontAttributes="Bold" 
+                       TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" />
+                <Label Text="Automatic Live Wallpaper Engine" FontSize="12" 
+                       TextColor="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkSecondaryText}}" />
+            </VerticalStackLayout>
+        </Grid>
+    </Shell.FlyoutHeader>
+
+    <!-- Left Drawer Navigation Items -->
+    <FlyoutItem Title="Wallpaper Collections" Route="CollectionsPage">
+        <ShellContent ContentTemplate="{DataTemplate views:CollectionsPage}" />
+    </FlyoutItem>
+
+    <MenuItem Text="Cloud Accounts &amp; Settings" Clicked="OnSettingsMenuItemClicked" />
+
+</Shell>

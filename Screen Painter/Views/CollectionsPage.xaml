@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Screen_Painter.ViewModels"
+             xmlns:models="clr-namespace:Screen_Painter.Models"
+             xmlns:behaviors="clr-namespace:Screen_Painter.Behaviors"
+             x:Class="Screen_Painter.Views.CollectionsPage"
+             x:DataType="vm:CollectionsViewModel"
+             Title="Screen Painter"
+             BackgroundColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="+ Add Collection" Command="{Binding AddCollectionCommand}" />
+    </ContentPage.ToolbarItems>
+
+    <Grid RowDefinitions="Auto, *">
+        <!-- Header Banner -->
+        <Border Grid.Row="0" Style="{StaticResource BannerBorder}">
+            <StackLayout Spacing="{StaticResource TightSpacing}">
+                <Label Text="Wallpaper Collections" Style="{StaticResource PageTitleLabel}" />
+                <Label Text="Configure automatic Home &amp; Lock screen image rotators" Style="{StaticResource SubtitleLabel}" />
+            </StackLayout>
+        </Border>
+
+        <!-- Collections CollectionView -->
+        <RefreshView Grid.Row="1" IsRefreshing="{Binding IsBusy}" Command="{Binding LoadCollectionsCommand}">
+            <CollectionView ItemsSource="{Binding Collections}" Margin="{StaticResource ContentMargin}">
+                <CollectionView.EmptyView>
+                    <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="{StaticResource ItemSpacing}">
+                        <Label Text="No Wallpaper Collections Created" Style="{StaticResource EmptyStateLabel}" />
+                        <Button Text="Create First Collection" Command="{Binding AddCollectionCommand}" 
+                                BackgroundColor="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}" 
+                                TextColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPrimaryText}}" 
+                                CornerRadius="{StaticResource RoundButtonRadius}" Padding="{StaticResource ButtonPaddingLg}" />
+                    </VerticalStackLayout>
+                </CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:WallpaperCollection">
+                        <Border Margin="{StaticResource CardMargin}" Style="{StaticResource CardBorder}">
+                            <Grid RowDefinitions="Auto, Auto, Auto, Auto" RowSpacing="{StaticResource CompactSpacing}">
+                                <!-- Card Title & Enable Switch -->
+                                <Grid Grid.Row="0" ColumnDefinitions="*, Auto">
+                                    <Label Grid.Column="0" Text="{Binding Name}" Style="{StaticResource CardTitleLabel}" VerticalOptions="Center" />
+                                    <Switch Grid.Column="1" IsToggled="{Binding IsEnabled, Mode=OneWay}" Toggled="OnSwitchToggled" 
+                                            Style="{StaticResource ThemedSwitch}" VerticalOptions="Center" />
+                                </Grid>
+
+                                <!-- Visual Random Image Thumbnail Card -->
+                                <Border Grid.Row="1" Style="{StaticResource ThumbnailBorder}">
+                                    <Grid>
+                                        <!-- Collage: up to 4 random wallpapers in a 2x2 grid -->
+                                        <Grid IsVisible="{Binding HasPreview}"
+                                              RowDefinitions="*, *" ColumnDefinitions="*, *"
+                                              RowSpacing="{StaticResource CollageCellSpacing}"
+                                              ColumnSpacing="{StaticResource CollageCellSpacing}">
+                                            <Image Grid.Row="0" Grid.Column="0" Aspect="AspectFill"
+                                                   Source="{Binding PreviewImagePaths, Converter={StaticResource PreviewImageAtIndex}, ConverterParameter=0}"
+                                                   IsVisible="{Binding PreviewImagePaths, Converter={StaticResource PreviewCellVisible}, ConverterParameter=0}" />
+                                            <Image Grid.Row="0" Grid.Column="1" Aspect="AspectFill"
+                                                   Source="{Binding PreviewImagePaths, Converter={StaticResource PreviewImageAtIndex}, ConverterParameter=1}"
+                                                   IsVisible="{Binding PreviewImagePaths, Converter={StaticResource PreviewCellVisible}, ConverterParameter=1}" />
+                                            <Image Grid.Row="1" Grid.Column="0" Aspect="AspectFill"
+                                                   Source="{Binding PreviewImagePaths, Converter={StaticResource PreviewImageAtIndex}, ConverterParameter=2}"
+                                                   IsVisible="{Binding PreviewImagePaths, Converter={StaticResource PreviewCellVisible}, ConverterParameter=2}" />
+                                            <Image Grid.Row="1" Grid.Column="1" Aspect="AspectFill"
+                                                   Source="{Binding PreviewImagePaths, Converter={StaticResource PreviewImageAtIndex}, ConverterParameter=3}"
+                                                   IsVisible="{Binding PreviewImagePaths, Converter={StaticResource PreviewCellVisible}, ConverterParameter=3}" />
+                                        </Grid>
+
+                                        <!-- Loading skeleton with gradient sweep shimmer -->
+                                        <Grid IsVisible="{Binding IsPreviewLoading}"
+                                              RowDefinitions="*, *" ColumnDefinitions="*, *"
+                                              RowSpacing="{StaticResource CollageCellSpacing}"
+                                              ColumnSpacing="{StaticResource CollageCellSpacing}"
+                                              IsClippedToBounds="True">
+                                            <BoxView Grid.Row="0" Grid.Column="0" Style="{StaticResource SkeletonTile}" />
+                                            <BoxView Grid.Row="0" Grid.Column="1" Style="{StaticResource SkeletonTile}" />
+                                            <BoxView Grid.Row="1" Grid.Column="0" Style="{StaticResource SkeletonTile}" />
+                                            <BoxView Grid.Row="1" Grid.Column="1" Style="{StaticResource SkeletonTile}" />
+                                            <!-- Sweeping highlight stripe -->
+                                            <BoxView Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" Grid.ColumnSpan="2"
+                                                     WidthRequest="{StaticResource ShimmerStripeWidth}"
+                                                     HorizontalOptions="Start" InputTransparent="True">
+                                                <BoxView.Background>
+                                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                        <GradientStop Offset="0.0" Color="Transparent" />
+                                                        <GradientStop Offset="0.5" Color="{StaticResource ShimmerHighlight}" />
+                                                        <GradientStop Offset="1.0" Color="Transparent" />
+                                                    </LinearGradientBrush>
+                                                </BoxView.Background>
+                                                <BoxView.Behaviors>
+                                                    <behaviors:ShimmerBehavior />
+                                                </BoxView.Behaviors>
+                                            </BoxView>
+                                        </Grid>
+
+                                        <!-- Empty placeholder -->
+                                        <VerticalStackLayout IsVisible="{Binding ShowPlaceholder}"
+                                                             VerticalOptions="Center" HorizontalOptions="Center"
+                                                             Spacing="{StaticResource TightSpacing}">
+                                            <Label Text="No images yet" Style="{StaticResource PlaceholderLabel}" />
+                                            <Label Text="Add folders to start rotating wallpapers" Style="{StaticResource PlaceholderSubLabel}" />
+                                        </VerticalStackLayout>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Info Pills -->
+                                <HorizontalStackLayout Grid.Row="2" Spacing="{StaticResource CompactSpacing}">
+                                    <Border Style="{StaticResource InfoPillBorder}">
+                                        <Label Text="{Binding Target, StringFormat='Target: {0}'}" Style="{StaticResource SmallCaptionLabel}" />
+                                    </Border>
+                                    <Border Style="{StaticResource InfoPillBorder}" IsVisible="{Binding IsTimerEnabled}">
+                                        <Label Text="{Binding TimerIntervalMinutes, StringFormat='Timer: {0}m'}" Style="{StaticResource SmallCaptionLabel}" 
+                                               TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" />
+                                    </Border>
+                                    <Border Style="{StaticResource InfoPillBorder}" IsVisible="{Binding IsScreenAwakeEnabled}">
+                                        <Label Text="On Wake" Style="{StaticResource SmallCaptionLabel}" 
+                                               TextColor="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkSecondaryText}}" />
+                                    </Border>
+                                </HorizontalStackLayout>
+
+                                <!-- Action Buttons: Apply Now, Configure, Delete -->
+                                <Grid Grid.Row="3" ColumnDefinitions="*, *, *" ColumnSpacing="{StaticResource CompactSpacing}" Margin="{StaticResource ButtonRowMargin}">
+                                    <Button x:DataType="{x:Null}" Grid.Column="0" Text="Apply Now" 
+                                             Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CollectionsViewModel}}, Path=ApplyNowCommand}" 
+                                             CommandParameter="{Binding .}" Style="{StaticResource PrimaryButton}" />
+                                    <Button Grid.Column="1" Text="Configure" 
+                                             Clicked="OnEditClicked" CommandParameter="{Binding Id}" Style="{StaticResource SecondaryButton}" />
+                                    <Button x:DataType="{x:Null}" Grid.Column="2" Text="Delete" 
+                                             Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CollectionsViewModel}}, Path=DeleteCollectionCommand}" 
+                                             CommandParameter="{Binding .}" Style="{StaticResource DangerButton}" HeightRequest="{StaticResource CompactButtonHeight}" />
+                                </Grid>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+    </Grid>
+</ContentPage>

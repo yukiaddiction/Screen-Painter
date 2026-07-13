@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Screen_Painter.ViewModels"
+             xmlns:models="clr-namespace:Screen_Painter.Models"
+             x:Class="Screen_Painter.Views.SettingsPage"
+             x:DataType="vm:SettingsViewModel"
+             Title="Settings"
+             BackgroundColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}">
+
+    <Grid RowDefinitions="Auto, *">
+        <!-- Settings Header Banner -->
+        <Border Grid.Row="0" Style="{StaticResource BannerBorder}">
+            <StackLayout Spacing="{StaticResource TightSpacing}">
+                <Label Text="Cloud Accounts &amp; Settings" Style="{StaticResource PageTitleLabel}" />
+                <Label Text="Manage live wallpaper rotators and cloud credentials" Style="{StaticResource SubtitleLabel}" />
+            </StackLayout>
+        </Border>
+
+        <!-- Cloud Accounts List -->
+        <ScrollView Grid.Row="1" Padding="{StaticResource PageMargin}">
+            <VerticalStackLayout Spacing="{StaticResource SectionSpacing}">
+                <!-- Theme Switcher Card -->
+                <Border Style="{StaticResource SectionBorder}">
+                    <Grid ColumnDefinitions="*, Auto">
+                        <VerticalStackLayout Grid.Column="0" Spacing="{StaticResource MinimalSpacing}">
+                            <Label Text="App Theme Mode" Style="{StaticResource SectionSubtitleLabel}" FontAttributes="Bold" 
+                                   TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" />
+                            <Label Text="Switch between light and dark UI color schemes" Style="{StaticResource CaptionLabel}" />
+                        </VerticalStackLayout>
+                        <HorizontalStackLayout Grid.Column="1" Spacing="{StaticResource CompactSpacing}" VerticalOptions="Center">
+                            <Label Text="Light" VerticalOptions="Center" 
+                                   TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkSecondaryText}}" />
+                            <Switch IsToggled="{Binding IsDarkMode}" Style="{StaticResource ThemedSwitch}" VerticalOptions="Center" />
+                            <Label Text="Dark" VerticalOptions="Center" 
+                                   TextColor="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkPrimaryText}}" />
+                        </HorizontalStackLayout>
+                    </Grid>
+                </Border>
+
+                <!-- Battery Optimization Settings Card -->
+                <Border Style="{StaticResource SectionBorder}">
+                    <Grid ColumnDefinitions="*, Auto">
+                        <VerticalStackLayout Grid.Column="0" Spacing="{StaticResource MinimalSpacing}">
+                            <Label Text="Background Stability" Style="{StaticResource SectionSubtitleLabel}" FontAttributes="Bold" 
+                                   TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" />
+                            <Label Text="Exclude app from battery optimizations to prevent the rotator service from stopping in the background." Style="{StaticResource CaptionLabel}" />
+                            <HorizontalStackLayout Spacing="{StaticResource TightSpacing}" Margin="{StaticResource InstructionMargin}">
+                                <Label Text="Status: " Style="{StaticResource CaptionLabel}" FontAttributes="Bold" />
+                                <Label Text="{Binding BatteryStatusText}" Style="{StaticResource CaptionLabel}" FontAttributes="Bold" TextColor="{Binding BatteryStatusColor}" />
+                            </HorizontalStackLayout>
+                        </VerticalStackLayout>
+                        <Button Grid.Column="1" Text="Configure" Command="{Binding RequestBatteryExemptionCommand}" Style="{StaticResource PrimaryButton}" VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- Application Logs Card -->
+                <Border Style="{StaticResource SectionBorder}">
+                    <Grid ColumnDefinitions="*, Auto" ColumnSpacing="12">
+                        <VerticalStackLayout Grid.Column="0" Spacing="{StaticResource MinimalSpacing}">
+                            <Label Text="Application Logs" Style="{StaticResource SectionSubtitleLabel}" FontAttributes="Bold" 
+                                   TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" />
+                            <Label Text="{Binding LogSummary}" Style="{StaticResource CaptionLabel}" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="Center">
+                            <Button Text="View Logs" Command="{Binding ViewLogsCommand}"
+                                    Style="{StaticResource InlinePrimaryButton}" WidthRequest="100" />
+                            <Button Text="Copy Logs" Command="{Binding CopyLogsCommand}"
+                                    Style="{StaticResource InlinePrimaryButton}" WidthRequest="100" />
+                        </VerticalStackLayout>
+                    </Grid>
+                </Border>
+
+                <!-- Action Buttons -->
+                <Grid ColumnDefinitions="*, *" ColumnSpacing="{StaticResource ItemSpacing}">
+                    <Button Grid.Column="0" Text="+ WebDAV Account" Command="{Binding AddWebDavAccountCommand}" Style="{StaticResource ActionButton}" CornerRadius="{StaticResource ButtonCornerRadius}" HeightRequest="{StaticResource StandardButtonHeight}" />
+                    <Button Grid.Column="1" Text="+ OAuth Account" Command="{Binding AddOAuthAccountCommand}" 
+                            Style="{StaticResource SecondaryButton}" FontAttributes="Bold" HeightRequest="{StaticResource StandardButtonHeight}" 
+                            CornerRadius="{StaticResource ButtonCornerRadius}" />
+                </Grid>
+
+                <CollectionView ItemsSource="{Binding CloudAccounts}">
+                    <CollectionView.EmptyView>
+                        <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="{StaticResource ItemSpacing}" Margin="{StaticResource EmptyStateMargin}">
+                            <Label Text="No Permanent Cloud Accounts Saved" Style="{StaticResource SectionSubtitleLabel}" 
+                                   TextColor="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkSecondaryText}}" HorizontalOptions="Center" />
+                            <Label Text="Add WebDAV or OAuth credentials to use cloud folders across collections." Style="{StaticResource BodySmallLabel}" 
+                                   TextColor="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkSecondaryText}}" 
+                                   HorizontalOptions="Center" HorizontalTextAlignment="Center" />
+                        </VerticalStackLayout>
+                    </CollectionView.EmptyView>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="models:CloudAccount">
+                            <Border Margin="{StaticResource CardMarginTight}" Style="{StaticResource CardBorder}" Padding="{StaticResource CardPaddingCompact}" StrokeShape="RoundRectangle 12">
+                                <Grid ColumnDefinitions="*, Auto">
+                                    <VerticalStackLayout Grid.Column="0" Spacing="{StaticResource MinimalSpacing}">
+                                        <Label Text="{Binding Name}" Style="{StaticResource SectionSubtitleLabel}" FontAttributes="Bold" 
+                                               TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" />
+                                        <Label Text="{Binding ServerUrl}" Style="{StaticResource CaptionLabel}" LineBreakMode="MiddleTruncation" />
+                                        <HorizontalStackLayout Spacing="{StaticResource CompactSpacing}" Margin="{StaticResource MicroSpacing}">
+                                            <Border Style="{StaticResource EncryptedPillBorder}">
+                                                <Label Text="{Binding Type, StringFormat='Type: {0}'}" Style="{StaticResource SmallCaptionLabel}" />
+                                            </Border>
+                                            <Border Style="{StaticResource EncryptedPillBorder}">
+                                                <Label Text="AES Encrypted" Style="{StaticResource SmallCaptionLabel}" 
+                                                       TextColor="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkSecondaryText}}" />
+                                            </Border>
+                                        </HorizontalStackLayout>
+                                    </VerticalStackLayout>
+
+                                    <HorizontalStackLayout Grid.Column="1" Spacing="{StaticResource CompactSpacing}" VerticalOptions="Center">
+                                        <Button x:DataType="{x:Null}" Text="Test" 
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:SettingsViewModel}}, Path=TestWebDavAccountCommand}" 
+                                                CommandParameter="{Binding .}" Style="{StaticResource InlinePrimaryButton}" />
+                                        <Button x:DataType="{x:Null}" Text="Delete" 
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:SettingsViewModel}}, Path=DeleteAccountCommand}" 
+                                                CommandParameter="{Binding .}" Style="{StaticResource DangerButton}" HeightRequest="{StaticResource SmallButtonHeight}" />
+                                    </HorizontalStackLayout>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

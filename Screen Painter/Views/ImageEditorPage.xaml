@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Screen_Painter.ViewModels"
+             x:Class="Screen_Painter.Views.ImageEditorPage"
+             x:DataType="vm:ImageEditorViewModel"
+             Title="Image Framing &amp; Ratio Editor"
+             BackgroundColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}">
+
+    <Grid RowDefinitions="*, Auto" Padding="{StaticResource PageMargin}">
+        <!-- Live Framing Canvas Visualizer -->
+        <Border Grid.Row="0" Style="{StaticResource PreviewCanvasBorder}" Margin="{StaticResource EditorCanvasMargin}">
+            <Grid>
+                <!-- Framing Box / Aspect Preview -->
+                <BoxView HorizontalOptions="Center" VerticalOptions="Center" 
+                         WidthRequest="{StaticResource PreviewCardWidth}" HeightRequest="{StaticResource PreviewCardHeight}" 
+                         Color="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}" CornerRadius="{StaticResource CardCornerRadiusSm}" />
+                <Label Text="&#x1F5BC; Preview adjusts based on framing below" 
+                       HorizontalOptions="Center" VerticalOptions="Center" 
+                       Style="{StaticResource SubtitleLabel}" />
+                <Label Text="Non-Destructive framing preview (Original file unmodified)" 
+                       Style="{StaticResource SmallCaptionLabel}" HorizontalOptions="Center" VerticalOptions="End" Margin="0,0,0,12" />
+            </Grid>
+        </Border>
+
+        <!-- Adjustment Controls -->
+        <Border Grid.Row="1" Style="{StaticResource PreviewCanvasBorder}" Padding="{StaticResource CardPadding}">
+            <VerticalStackLayout Spacing="{StaticResource GroupSpacing}">
+                <Label Text="Framing Parameters" Style="{StaticResource SectionSubtitleLabel}" FontAttributes="Bold" 
+                       TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" />
+
+                <!-- Scale Slider -->
+                <Grid ColumnDefinitions="Auto, *, Auto">
+                    <Label Grid.Column="0" Text="Scale" 
+                           TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" VerticalOptions="Center" WidthRequest="60" />
+                    <Slider Grid.Column="1" Minimum="0.5" Maximum="3.0" Value="{Binding Scale}" 
+                            MinimumTrackColor="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}" 
+                            MaximumTrackColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}" 
+                            ThumbColor="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkPrimaryText}}" />
+                    <Label Grid.Column="2" Text="{Binding Scale, StringFormat='{0:F2}x'}" 
+                           Style="{StaticResource SmallCaptionLabel}" WidthRequest="50" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                </Grid>
+
+                <!-- Offset X Slider -->
+                <Grid ColumnDefinitions="Auto, *, Auto">
+                    <Label Grid.Column="0" Text="Offset X" 
+                           TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" VerticalOptions="Center" WidthRequest="60" />
+                    <Slider Grid.Column="1" Minimum="-200" Maximum="200" Value="{Binding OffsetX}" 
+                            MinimumTrackColor="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}" 
+                            MaximumTrackColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}" 
+                            ThumbColor="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkPrimaryText}}" />
+                    <Label Grid.Column="2" Text="{Binding OffsetX, StringFormat='{0:F0}px'}" 
+                           Style="{StaticResource SmallCaptionLabel}" WidthRequest="50" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                </Grid>
+
+                <!-- Offset Y Slider -->
+                <Grid ColumnDefinitions="Auto, *, Auto">
+                    <Label Grid.Column="0" Text="Offset Y" 
+                           TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" VerticalOptions="Center" WidthRequest="60" />
+                    <Slider Grid.Column="1" Minimum="-200" Maximum="200" Value="{Binding OffsetY}" 
+                            MinimumTrackColor="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}" 
+                            MaximumTrackColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}" 
+                            ThumbColor="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkPrimaryText}}" />
+                    <Label Grid.Column="2" Text="{Binding OffsetY, StringFormat='{0:F0}px'}" 
+                           Style="{StaticResource SmallCaptionLabel}" WidthRequest="50" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                </Grid>
+
+                <Grid ColumnDefinitions="*, *" ColumnSpacing="{StaticResource ItemSpacing}" Margin="{StaticResource SectionBottomMargin}">
+                    <Button Grid.Column="0" Text="Reset" Command="{Binding ResetFramingCommand}" 
+                            Style="{StaticResource SecondaryButton}" HeightRequest="{StaticResource StandardButtonHeight}" CornerRadius="{StaticResource ButtonCornerRadius}" />
+                    <Button Grid.Column="1" Text="Apply Framing" Command="{Binding SaveFramingCommand}" 
+                            Style="{StaticResource ActionButton}" CornerRadius="{StaticResource ButtonCornerRadius}" HeightRequest="{StaticResource StandardButtonHeight}" />
+                </Grid>
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+</ContentPage>
