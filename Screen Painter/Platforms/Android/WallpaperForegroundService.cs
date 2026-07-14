@@ -31,6 +31,8 @@ public class WallpaperForegroundService : Service
     private ScreenAwakeReceiver? _awakeReceiver;
     private CancellationTokenSource? _timerCts;
     private int _evaluationInProgress;
+    private int _screenEventInProgress;
+    private static WallpaperForegroundService? _instance;
     public static readonly Screen_Painter.Services.Scheduling.RotationGate Gate = new();
 
     public override IBinder? OnBind(Intent? intent) => null;
@@ -44,6 +46,7 @@ public class WallpaperForegroundService : Service
     public override void OnCreate()
     {
         base.OnCreate();
+        _instance = this;
         CreateNotificationChannel();
         RegisterAwakeReceiver();
     }
@@ -172,7 +175,7 @@ public class WallpaperForegroundService : Service
                 var target = collection.Target;
                 log.LogInformation("Timer trigger: applying wallpaper — collection: {Name}, target: {Target}",
                     collection.Name, target);
-                await rotationService.RotateCollectionWallpaperAsync(collection, target);
+                await rotationService.RotateCollectionWallpaperAsync(collection, target, fastApply: true);
                 rotated++;
             }
 
@@ -210,6 +213,179 @@ public class WallpaperForegroundService : Service
 
     public static bool ShouldRotateTimerCollection(WallpaperCollection collection)
         => Gate.ShouldRotateTimerCollection(collection, DateTime.Now);
+
+    /// <summary>
+    /// Entry point invoked by <see cref="ScreenAwakeReceiver"/>. Forwards the screen event to the
+    /// long-lived service instance so the (potentially slow) wallpaper work runs outside the
+    /// BroadcastReceiver's ~10s execution limit. Returns false if no live service is available.
+    /// </summary>
+    public static bool NotifyScreenEvent(bool isScreenOff)
+    {
+        var instance = _instance;
+        if (instance == null)
+            return false;
+
+        instance.HandleScreenEvent(isScreenOff);
+        return true;
+    }
+
+    private void HandleScreenEvent(bool isScreenOff)
+    {
+        // Skip overlapping screen events; the rotation cooldown already makes a rapid
+        // repeat a no-op, so dropping the extra event avoids piling up work + wakelocks.
+        if (Interlocked.Exchange(ref _screenEventInProgress, 1) == 1)
+        {
+            GetLogger().LogDebug("Screen event skipped — a rotation is already in progress");
+            return;
+        }
+
+        var log = GetLogger();
+        var wakeLock = AcquireScreenEventWakeLock(log);
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await ProcessScreenEventAsync(isScreenOff, log);
+            }
+            catch (Exception ex)
+            {
+                log.LogError(ex, "Screen event processing error");
+            }
+            finally
+            {
+                ReleaseWakeLock(wakeLock, log);
+                Interlocked.Exchange(ref _screenEventInProgress, 0);
+            }
+        });
+    }
+
+    private PowerManager.WakeLock? AcquireScreenEventWakeLock(ILogger log)
+    {
+        try
+        {
+            var powerManager = (PowerManager?)GetSystemService(PowerService);
+            var wakeLock = powerManager?.NewWakeLock(
+                WakeLockFlags.Partial,
+                $"ScreenPainter:ScreenEvent:{Guid.NewGuid()}");
+            wakeLock?.Acquire(AppConstants.WakeLockTimeoutMs);
+            log.LogDebug("Screen-event WakeLock acquired");
+            return wakeLock;
+        }
+        catch (Exception ex)
+        {
+            log.LogWarning(ex, "Screen-event WakeLock acquire failed");
+            return null;
+        }
+    }
+
+    private static void ReleaseWakeLock(PowerManager.WakeLock? wakeLock, ILogger log)
+    {
+        try
+        {
+            if (wakeLock != null && wakeLock.IsHeld)
+            {
+                wakeLock.Release();
+                log.LogDebug("Screen-event WakeLock released");
+            }
+        }
+        catch (Exception ex)
+        {
+            log.LogWarning(ex, "Screen-event WakeLock release failed");
+        }
+    }
+
+    private static async Task ProcessScreenEventAsync(bool isScreenOff, ILogger log)
+    {
+        var rotationService = ServiceAccessor.GetService<IWallpaperRotationService>();
+        var scheduler = ServiceAccessor.GetService<ICollectionScheduler>();
+
+        if (rotationService == null || scheduler == null)
+        {
+            log.LogWarning("Screen event skipped — services not available");
+            return;
+        }
+
+        var collections = await scheduler.GetAllCollectionsAsync();
+
+        if (isScreenOff)
+        {
+            await ApplyScreenAwakeWallpapersAsync(collections, rotationService, log);
+        }
+        else
+        {
+            await ApplyScreenAwakeFailSafeAsync(collections, rotationService, log);
+            await ApplyDeferredTimerRotationsAsync(collections, rotationService, log);
+        }
+    }
+
+    private static async Task ApplyScreenAwakeWallpapersAsync(
+        List<WallpaperCollection> collections,
+        IWallpaperRotationService rotationService,
+        ILogger log)
+    {
+        var activeAwake = collections.Where(c => c.IsEnabled && c.IsScreenAwakeEnabled).ToList();
+        if (!activeAwake.Any())
+        {
+            log.LogDebug("ScreenOff: no active ScreenAwake collections");
+            return;
+        }
+
+        foreach (var collection in activeAwake)
+        {
+            if (!Gate.TryBeginRotation(collection.Id, MinimumRotationCooldownSeconds, DateTime.Now))
+            {
+                log.LogInformation("ScreenAwake skipped (rotation claimed by another trigger) — collection: {Name}", collection.Name);
+                continue;
+            }
+
+            log.LogInformation("ScreenAwake trigger: applying wallpaper — collection: {Name}, target: {Target}", collection.Name, collection.Target);
+            await rotationService.RotateCollectionWallpaperAsync(collection, collection.Target, fastApply: true);
+        }
+    }
+
+    private static async Task ApplyScreenAwakeFailSafeAsync(
+        List<WallpaperCollection> collections,
+        IWallpaperRotationService rotationService,
+        ILogger log)
+    {
+        var activeAwake = collections.Where(c => c.IsEnabled && c.IsScreenAwakeEnabled).ToList();
+        foreach (var collection in activeAwake)
+        {
+            // Only rotate if the last rotation is older than the recent-threshold window.
+            // TryBeginRotation atomically claims the window so a concurrent timer tick
+            // cannot also rotate the same collection.
+            if (Gate.TryBeginRotation(collection.Id, AppConstants.RecentRotationThresholdSeconds, DateTime.Now))
+            {
+                log.LogInformation("ScreenAwake fail-safe: applying wallpaper — collection: {Name}, target: {Target}",
+                    collection.Name, collection.Target);
+                await rotationService.RotateCollectionWallpaperAsync(collection, collection.Target, fastApply: true);
+            }
+            else
+            {
+                log.LogDebug("ScreenAwake fail-safe: skipped (rotated recently) — collection: {Name}", collection.Name);
+            }
+        }
+    }
+
+    private static async Task ApplyDeferredTimerRotationsAsync(
+        List<WallpaperCollection> collections,
+        IWallpaperRotationService rotationService,
+        ILogger log)
+    {
+        var activeTimer = collections.Where(c => c.IsEnabled && c.IsTimerEnabled).ToList();
+        foreach (var collection in activeTimer)
+        {
+            if (!Gate.ShouldRotateTimerCollection(collection, DateTime.Now))
+                continue;
+
+            if (!Gate.TryBeginRotation(collection.Id, MinimumRotationCooldownSeconds, DateTime.Now))
+                continue;
+
+            log.LogInformation("Timer trigger on unlock: applying wallpaper — collection: {Name}, target: {Target}", collection.Name, collection.Target);
+            await rotationService.RotateCollectionWallpaperAsync(collection, collection.Target, fastApply: true);
+        }
+    }
 
     private void RegisterAwakeReceiver()
     {
@@ -283,6 +459,9 @@ public class WallpaperForegroundService : Service
             }
             _awakeReceiver = null;
         }
+
+        if (ReferenceEquals(_instance, this))
+            _instance = null;
 
         base.OnDestroy();
     }

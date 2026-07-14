@@ -16,7 +16,7 @@ public class WallpaperServiceAndroid : Services.Wallpaper.IWallpaperService
 {
     private static readonly SemaphoreSlim WallpaperSemaphore = new(1, 1);
 
-    public async Task<bool> ApplyWallpaperAsync(string imagePath, TargetScreen targetScreen, ImageFramingConfig framingConfig)
+    public async Task<bool> ApplyWallpaperAsync(string imagePath, TargetScreen targetScreen, ImageFramingConfig framingConfig, bool skipPostApplyDelay = false)
     {
         if (string.IsNullOrEmpty(imagePath))
             return false;
@@ -33,7 +33,11 @@ public class WallpaperServiceAndroid : Services.Wallpaper.IWallpaperService
             WallpaperSemaphore.Release();
         }
 
-        await Task.Delay(AppConstants.WallpaperPostApplyDelayMs);
+        if (!skipPostApplyDelay)
+        {
+            await Task.Delay(AppConstants.WallpaperPostApplyDelayMs);
+        }
+
         return taskResult;
     }
 

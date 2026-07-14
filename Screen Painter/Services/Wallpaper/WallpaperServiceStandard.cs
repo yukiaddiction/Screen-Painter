@@ -6,7 +6,7 @@ namespace Screen_Painter.Services.Wallpaper;
 
 public class WallpaperServiceStandard : IWallpaperService
 {
-    public Task<bool> ApplyWallpaperAsync(string imagePath, TargetScreen targetScreen, ImageFramingConfig framingConfig)
+    public Task<bool> ApplyWallpaperAsync(string imagePath, TargetScreen targetScreen, ImageFramingConfig framingConfig, bool skipPostApplyDelay = false)
     {
         throw new PlatformNotSupportedException(
             "Wallpaper rotation is only supported on Android. " +

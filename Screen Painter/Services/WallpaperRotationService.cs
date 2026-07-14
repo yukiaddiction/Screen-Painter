@@ -12,7 +12,8 @@ public interface IWallpaperRotationService
 {
     Task RotateCollectionWallpaperAsync(
         WallpaperCollection collection,
-        TargetScreen target);
+        TargetScreen target,
+        bool fastApply = false);
 }
 
 public class WallpaperRotationService : IWallpaperRotationService
@@ -36,7 +37,8 @@ public class WallpaperRotationService : IWallpaperRotationService
 
     public async Task RotateCollectionWallpaperAsync(
         WallpaperCollection collection,
-        TargetScreen target)
+        TargetScreen target,
+        bool fastApply = false)
     {
         string? nextImagePath = null;
         bool isCached = false;
@@ -71,7 +73,7 @@ public class WallpaperRotationService : IWallpaperRotationService
             _logger.LogInformation("Wallpaper rotation — collection: {Name}, target: {Target}, source: {Source}, image: {Path}",
                 collection.Name, target, source, System.IO.Path.GetFileName(nextImagePath));
 
-            var success = await _wallpaperService.ApplyWallpaperAsync(nextImagePath, target, collection.FramingConfig);
+            var success = await _wallpaperService.ApplyWallpaperAsync(nextImagePath, target, collection.FramingConfig, fastApply);
 
             if (success && isCached)
             {
