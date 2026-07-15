@@ -1,10 +1,12 @@
 #if ANDROID
 using System;
+using System.Linq;
 using Android.App;
 using Android.Content;
 using Android.OS;
 using Microsoft.Extensions.Logging;
 using Screen_Painter.Services.Logging;
+using Screen_Painter.Services.Scheduling;
 
 namespace Screen_Painter.Platforms.Android;
 
@@ -17,21 +19,42 @@ public class AlarmReceiver : BroadcastReceiver
     {
         if (context == null) return;
 
-        var serviceIntent = new Intent(context, typeof(WallpaperForegroundService));
-        try
+        bool hasEnabledCollections = CheckForEnabledCollections();
+
+        if (hasEnabledCollections)
         {
-            if (OperatingSystem.IsAndroidVersionAtLeast(26))
-                context.StartForegroundService(serviceIntent);
-            else
-                context.StartService(serviceIntent);
-        }
-        catch (Exception ex)
-        {
-            GetLogger().LogWarning(ex, "AlarmReceiver could not start foreground service (background start restriction)");
+            var serviceIntent = new Intent(context, typeof(WallpaperForegroundService));
+            try
+            {
+                if (OperatingSystem.IsAndroidVersionAtLeast(26))
+                    context.StartForegroundService(serviceIntent);
+                else
+                    context.StartService(serviceIntent);
+            }
+            catch (Exception ex)
+            {
+                GetLogger().LogWarning(ex, "AlarmReceiver could not start foreground service (background start restriction)");
+            }
         }
 
-        // Exact alarms are one-shot, so re-arm the next watchdog tick.
-        Schedule(context);
+        if (hasEnabledCollections)
+            Schedule(context);
+    }
+
+    private static bool CheckForEnabledCollections()
+    {
+        try
+        {
+            var scheduler = ServiceAccessor.GetService<ICollectionScheduler>();
+            if (scheduler == null) return true; // fail-safe: can't check, assume yes
+
+            var collections = scheduler.GetAllCollectionsAsync().GetAwaiter().GetResult();
+            return collections.Any(c => c.IsEnabled);
+        }
+        catch
+        {
+            return true; // fail-safe: error checking, assume yes
+        }
     }
 
     public static void Schedule(Context context)

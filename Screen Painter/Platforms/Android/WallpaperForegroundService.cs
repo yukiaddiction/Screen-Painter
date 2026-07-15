@@ -32,6 +32,10 @@ public class WallpaperForegroundService : Service
     private CancellationTokenSource? _timerCts;
     private int _evaluationInProgress;
     private int _screenEventInProgress;
+    private int _evaluationSkipCount;
+    private DateTime _lastEvaluationSkipLog = DateTime.MinValue;
+    private DateTime _lastNoActiveCollectionsLog = DateTime.MinValue;
+    private DateTime _lastIntervalWaitingLog = DateTime.MinValue;
     private static WallpaperForegroundService? _instance;
     public static readonly Screen_Painter.Services.Scheduling.RotationGate Gate = new();
 
@@ -120,7 +124,18 @@ public class WallpaperForegroundService : Service
     private async Task EvaluateTimerRotationsAsync()
     {
         if (Interlocked.Exchange(ref _evaluationInProgress, 1) == 1)
+        {
+            var skipped = Interlocked.Increment(ref _evaluationSkipCount);
+            var now = DateTime.UtcNow;
+            if ((now - _lastEvaluationSkipLog).TotalMinutes >= 5)
+            {
+                GetLogger().LogWarning("Timer eval — previous evaluation still in progress ({Skips} skips over {Minutes:F0} min)",
+                    skipped, (now - _lastEvaluationSkipLog).TotalMinutes);
+                Interlocked.Exchange(ref _evaluationSkipCount, 0);
+                _lastEvaluationSkipLog = now;
+            }
             return;
+        }
 
         var log = GetLogger();
         try
@@ -141,6 +156,13 @@ public class WallpaperForegroundService : Service
 
             if (!activeTimerCollections.Any())
             {
+                var now = DateTime.UtcNow;
+                if ((now - _lastNoActiveCollectionsLog).TotalMinutes >= 5)
+                {
+                    log.LogWarning("Timer eval — no active timer collections (total collections: {Total}, enabled: {Enabled}, timer: {Timer})",
+                        collections.Count, collections.Count(c => c.IsEnabled), collections.Count(c => c.IsTimerEnabled));
+                    _lastNoActiveCollectionsLog = now;
+                }
                 return;
             }
 
@@ -181,8 +203,18 @@ public class WallpaperForegroundService : Service
 
             if (rotated > 0 || deferred > 0 || cooldownSkip > 0)
             {
-                log.LogDebug("Timer check result — rotated: {Rotated}, keyguard-deferred: {Deferred}, cooldown-skipped: {Cooldown}, total active: {Total}",
+                log.LogInformation("Timer check result — rotated: {Rotated}, keyguard-deferred: {Deferred}, cooldown-skipped: {Cooldown}, total active: {Total}",
                     rotated, deferred, cooldownSkip, activeTimerCollections.Count);
+            }
+            else
+            {
+                var now = DateTime.UtcNow;
+                if ((now - _lastIntervalWaitingLog).TotalMinutes >= 5)
+                {
+                    log.LogInformation("Timer eval — {Count} active timer collection(s) waiting for interval to elapse",
+                        activeTimerCollections.Count);
+                    _lastIntervalWaitingLog = now;
+                }
             }
         }
         finally
@@ -445,8 +477,6 @@ public class WallpaperForegroundService : Service
         _timerCts?.Cancel();
         _timerCts?.Dispose();
         _timerCts = null;
-
-        AlarmReceiver.Cancel(this);
 
         if (_awakeReceiver != null)
         {
