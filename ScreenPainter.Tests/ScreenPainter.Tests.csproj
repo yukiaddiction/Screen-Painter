@@ -28,6 +28,7 @@
     <Compile Include="..\Screen Painter\Models\*.cs" />
     <Compile Include="..\Screen Painter\Services\Scheduling\RotationGate.cs" />
     <Compile Include="..\Screen Painter\Services\Scheduling\SchedulePolicy.cs" />
+    <Compile Include="..\Screen Painter\Services\Imaging\ImageKey.cs" />
   </ItemGroup>
 
 </Project>

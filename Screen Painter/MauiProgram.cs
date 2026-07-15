@@ -6,6 +6,7 @@ using Microsoft.Maui.Controls.Hosting;
 using Microsoft.Maui.Hosting;
 using Screen_Painter.Services;
 using Screen_Painter.Services.Cache;
+using Screen_Painter.Services.Imaging;
 using Screen_Painter.Services.Logging;
 using Screen_Painter.Services.Scheduling;
 using Screen_Painter.Services.Security;
@@ -51,6 +52,9 @@ public static class MauiProgram
         builder.Services.AddSingleton<ICollectionScheduler, CollectionScheduler>();
         builder.Services.AddSingleton<IStorageProviderResolver, StorageProviderResolver>();
         builder.Services.AddSingleton<IWallpaperRotationService, WallpaperRotationService>();
+        builder.Services.AddSingleton<IFramingOverrideService, FramingOverrideService>();
+        builder.Services.AddSingleton<IThumbnailService, ThumbnailService>();
+        builder.Services.AddSingleton<IGalleryManifestStore, GalleryManifestStore>();
 
         // Register Logging Services
         builder.Services.AddSingleton<LogService>();
@@ -65,6 +69,7 @@ public static class MauiProgram
         // Register ViewModels
         builder.Services.AddTransient<CollectionsViewModel>();
         builder.Services.AddTransient<CollectionDetailViewModel>();
+        builder.Services.AddTransient<CollectionGalleryViewModel>();
         builder.Services.AddTransient<ImageEditorViewModel>();
         builder.Services.AddTransient<SettingsViewModel>();
         builder.Services.AddTransient<CloudFolderPickerViewModel>();
@@ -73,6 +78,7 @@ public static class MauiProgram
         // Register Views
         builder.Services.AddTransient<CollectionsPage>();
         builder.Services.AddTransient<CollectionDetailPage>();
+        builder.Services.AddTransient<CollectionGalleryPage>();
         builder.Services.AddTransient<ImageEditorPage>();
         builder.Services.AddTransient<SettingsPage>();
         builder.Services.AddTransient<CloudFolderPickerPage>();

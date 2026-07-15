@@ -9,6 +9,7 @@ public class AppSettings
     public CacheSettings Cache { get; set; } = new();
     public AlarmSettings Alarm { get; set; } = new();
     public WakeLockSettings WakeLock { get; set; } = new();
+    public GallerySettings Gallery { get; set; } = new();
     public ApplicationSettings App { get; set; } = new();
 }
 
@@ -53,6 +54,18 @@ public class WakeLockSettings
 {
     public int TimeoutMs { get; set; } = 10000;
     public int RecentRotationThresholdSeconds { get; set; } = 60;
+}
+
+public class GallerySettings
+{
+    public int PageSize { get; set; } = 60;
+    public int ManifestTtlMinutes { get; set; } = 15;
+    public int ThumbnailMaxPixels { get; set; } = 256;
+    public int PreviewMaxPixels { get; set; } = 1080;
+    public int MaxParallelThumbnailJobs { get; set; } = 3;
+    public int ViewportLookahead { get; set; } = 24;
+    public long MaxThumbCacheSizeBytes { get; set; } = 100 * 1024 * 1024;
+    public long MaxPreviewCacheSizeBytes { get; set; } = 50 * 1024 * 1024;
 }
 
 public class ApplicationSettings

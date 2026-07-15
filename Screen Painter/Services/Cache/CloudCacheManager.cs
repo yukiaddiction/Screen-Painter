@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
 using Screen_Painter.Models;
+using Screen_Painter.Services.Imaging;
 using Screen_Painter.Services.Storage;
 
 namespace Screen_Painter.Services.Cache;
@@ -195,15 +196,18 @@ public class CloudCacheManager : ICacheManager
             var chosenId = identifiers[Random.Shared.Next(identifiers.Count)];
             try
             {
-                using var stream = await provider.DownloadImageStreamAsync(folder, chosenId);
-                if (stream == null) continue;
-
                 var extension = Path.GetExtension(chosenId);
                 if (string.IsNullOrEmpty(extension))
                     extension = ".jpg";
 
-                var localFileName = $"{Guid.NewGuid()}{extension}";
+                var localFileName = $"{ImageKey.Compute(chosenId)}{extension}";
                 var targetPath = Path.Combine(cacheDir, localFileName);
+
+                if (File.Exists(targetPath))
+                    continue;
+
+                using var stream = await provider.DownloadImageStreamAsync(folder, chosenId);
+                if (stream == null) continue;
 
                 using var localStream = File.Create(targetPath);
                 await stream.CopyToAsync(localStream);

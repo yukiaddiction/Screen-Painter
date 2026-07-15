@@ -119,16 +119,25 @@
                                     </Border>
                                 </HorizontalStackLayout>
 
-                                <!-- Action Buttons: Apply Now, Configure, Delete -->
-                                <Grid Grid.Row="3" ColumnDefinitions="*, *, *" ColumnSpacing="{StaticResource CompactSpacing}" Margin="{StaticResource ButtonRowMargin}">
+                                <!-- Action Buttons: Apply Now + Gallery / Configure / Delete icons -->
+                                <Grid Grid.Row="3" ColumnDefinitions="*, Auto, Auto, Auto" ColumnSpacing="{StaticResource CompactSpacing}" Margin="{StaticResource ButtonRowMargin}">
                                     <Button x:DataType="{x:Null}" Grid.Column="0" Text="Apply Now" 
                                              Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CollectionsViewModel}}, Path=ApplyNowCommand}" 
                                              CommandParameter="{Binding .}" Style="{StaticResource PrimaryButton}" />
-                                    <Button Grid.Column="1" Text="Configure" 
-                                             Clicked="OnEditClicked" CommandParameter="{Binding Id}" Style="{StaticResource SecondaryButton}" />
-                                    <Button x:DataType="{x:Null}" Grid.Column="2" Text="Delete" 
+                                    <Button x:DataType="{x:Null}" Grid.Column="1" Text="&#x1F5BC;" 
+                                             Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CollectionsViewModel}}, Path=OpenGalleryCommand}" 
+                                             CommandParameter="{Binding .}" Style="{StaticResource SecondaryButton}" 
+                                             WidthRequest="{StaticResource SmallIconButtonSize}" HeightRequest="{StaticResource SmallIconButtonSize}" 
+                                             CornerRadius="{StaticResource IconButtonRadius}" Padding="0" VerticalOptions="Center" />
+                                    <Button Grid.Column="2" Text="&#x2699;" 
+                                             Clicked="OnEditClicked" CommandParameter="{Binding Id}" Style="{StaticResource SecondaryButton}" 
+                                             WidthRequest="{StaticResource SmallIconButtonSize}" HeightRequest="{StaticResource SmallIconButtonSize}" 
+                                             CornerRadius="{StaticResource IconButtonRadius}" Padding="0" VerticalOptions="Center" />
+                                    <Button x:DataType="{x:Null}" Grid.Column="3" Text="&#x1F5D1;" 
                                              Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CollectionsViewModel}}, Path=DeleteCollectionCommand}" 
-                                             CommandParameter="{Binding .}" Style="{StaticResource DangerButton}" HeightRequest="{StaticResource CompactButtonHeight}" />
+                                             CommandParameter="{Binding .}" Style="{StaticResource DangerButton}" 
+                                             WidthRequest="{StaticResource SmallIconButtonSize}" HeightRequest="{StaticResource SmallIconButtonSize}" 
+                                             CornerRadius="{StaticResource IconButtonRadius}" Padding="0" VerticalOptions="Center" />
                                 </Grid>
                             </Grid>
                         </Border>

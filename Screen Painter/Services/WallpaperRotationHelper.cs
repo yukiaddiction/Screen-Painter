@@ -18,7 +18,8 @@ public static class WallpaperRotationHelper
         ICacheManager cacheManager,
         IEnumerable<IStorageProvider> storageProviders,
         TargetScreen target,
-        bool fastApply = false)
+        bool fastApply = false,
+        IFramingOverrideService? framingOverrides = null)
     {
         string? nextImagePath = null;
         bool isCached = false;
@@ -48,7 +49,10 @@ public static class WallpaperRotationHelper
 
         if (!string.IsNullOrEmpty(nextImagePath))
         {
-            var success = await wallpaperService.ApplyWallpaperAsync(nextImagePath, target, collection.FramingConfig, fastApply);
+            var framing = framingOverrides != null
+                ? await framingOverrides.ResolveFramingAsync(collection, nextImagePath)
+                : collection.FramingConfig;
+            var success = await wallpaperService.ApplyWallpaperAsync(nextImagePath, target, framing, fastApply);
 
             if (success && isCached)
             {

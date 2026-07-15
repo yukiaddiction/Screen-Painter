@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using Screen_Painter.Models;
+using Screen_Painter.Services;
 using Screen_Painter.Services.Cache;
 using Screen_Painter.Services.Scheduling;
 using Screen_Painter.Services.Storage;
@@ -25,6 +26,7 @@ public class CollectionsViewModel : BaseViewModel
     private readonly IWallpaperService _wallpaperService;
     private readonly ICacheManager _cacheManager;
     private readonly IEnumerable<IStorageProvider> _storageProviders;
+    private readonly IFramingOverrideService _framingOverrides;
     private CancellationTokenSource? _loadCts;
     private static bool _foregroundServiceStarted;
     private readonly ILogger<CollectionsViewModel> _logger;
@@ -38,18 +40,21 @@ public class CollectionsViewModel : BaseViewModel
     public ICommand ToggleCollectionCommand { get; }
     public ICommand DeleteCollectionCommand { get; }
     public ICommand ApplyNowCommand { get; }
+    public ICommand OpenGalleryCommand { get; }
 
     public CollectionsViewModel(
         ICollectionScheduler scheduler,
         IWallpaperService wallpaperService,
         ICacheManager cacheManager,
         IEnumerable<IStorageProvider> storageProviders,
+        IFramingOverrideService framingOverrides,
         ILogger<CollectionsViewModel> logger)
     {
         _scheduler = scheduler;
         _wallpaperService = wallpaperService;
         _cacheManager = cacheManager;
         _storageProviders = storageProviders;
+        _framingOverrides = framingOverrides;
         _logger = logger;
         Title = "Wallpaper Collections";
 
@@ -58,6 +63,7 @@ public class CollectionsViewModel : BaseViewModel
         ToggleCollectionCommand = new Command<WallpaperCollection>(async (c) => await ToggleCollectionAsync(c));
         DeleteCollectionCommand = new Command<WallpaperCollection>(async (c) => await DeleteCollectionAsync(c));
         ApplyNowCommand = new Command<WallpaperCollection>(async (c) => await ApplyNowAsync(c));
+        OpenGalleryCommand = new Command<WallpaperCollection>(async (c) => await OpenGalleryAsync(c));
     }
 
     public async Task EnsureRequiredPermissionsAsync()
@@ -365,7 +371,7 @@ public class CollectionsViewModel : BaseViewModel
             var selectedImage = await ResolveRandomPreviewImageAsync(collection);
             if (!string.IsNullOrEmpty(selectedImage))
             {
-                await _wallpaperService.ApplyWallpaperAsync(selectedImage, collection.Target, collection.FramingConfig);
+                await _wallpaperService.ApplyWallpaperAsync(selectedImage, collection.Target, await _framingOverrides.ResolveFramingAsync(collection, selectedImage));
                 await ShellHelper.DisplayAlert("Wallpaper Refreshed", $"Successfully applied new wallpaper from '{collection.Name}' to your device!", "OK");
             }
             else
@@ -389,6 +395,12 @@ public class CollectionsViewModel : BaseViewModel
         await ShellHelper.GoToAsync($"CollectionDetailPage?id={newId}");
     }
 
+    private async Task OpenGalleryAsync(WallpaperCollection? collection)
+    {
+        if (collection == null) return;
+        await ShellHelper.GoToAsync($"CollectionGalleryPage?collectionId={collection.Id}");
+    }
+
     public async Task ToggleCollectionAsync(WallpaperCollection? collection, bool? newState = null)
     {
         if (collection == null) return;
@@ -410,7 +422,7 @@ public class CollectionsViewModel : BaseViewModel
             var selectedImage = await ResolveRandomPreviewImageAsync(collection);
             if (!string.IsNullOrEmpty(selectedImage))
             {
-                await _wallpaperService.ApplyWallpaperAsync(selectedImage, collection.Target, collection.FramingConfig);
+                await _wallpaperService.ApplyWallpaperAsync(selectedImage, collection.Target, await _framingOverrides.ResolveFramingAsync(collection, selectedImage));
                 await ShellHelper.DisplayAlert("Collection Enabled", $"'{collection.Name}' is now active! Applied initial wallpaper to device.", "OK");
             }
             else

@@ -21,17 +21,20 @@ public class WallpaperRotationService : IWallpaperRotationService
     private readonly IWallpaperService _wallpaperService;
     private readonly ICacheManager _cacheManager;
     private readonly IStorageProviderResolver _providerResolver;
+    private readonly IFramingOverrideService _framingOverrides;
     private readonly ILogger<WallpaperRotationService> _logger;
 
     public WallpaperRotationService(
         IWallpaperService wallpaperService,
         ICacheManager cacheManager,
         IStorageProviderResolver providerResolver,
+        IFramingOverrideService framingOverrides,
         ILogger<WallpaperRotationService> logger)
     {
         _wallpaperService = wallpaperService;
         _cacheManager = cacheManager;
         _providerResolver = providerResolver;
+        _framingOverrides = framingOverrides;
         _logger = logger;
     }
 
@@ -73,7 +76,8 @@ public class WallpaperRotationService : IWallpaperRotationService
             _logger.LogInformation("Wallpaper rotation — collection: {Name}, target: {Target}, source: {Source}, image: {Path}",
                 collection.Name, target, source, System.IO.Path.GetFileName(nextImagePath));
 
-            var success = await _wallpaperService.ApplyWallpaperAsync(nextImagePath, target, collection.FramingConfig, fastApply);
+            var framing = await _framingOverrides.ResolveFramingAsync(collection, nextImagePath);
+            var success = await _wallpaperService.ApplyWallpaperAsync(nextImagePath, target, framing, fastApply);
 
             if (success && isCached)
             {

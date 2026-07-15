@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Screen_Painter.ViewModels"
+             x:Class="Screen_Painter.Views.CollectionGalleryPage"
+             x:DataType="vm:CollectionGalleryViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}">
+
+    <Grid RowDefinitions="Auto, *" Padding="{StaticResource PageMargin}" RowSpacing="{StaticResource ItemSpacing}">
+        <Label Grid.Row="0" Text="{Binding StatusText}" Style="{StaticResource CaptionLabel}" />
+
+        <RefreshView Grid.Row="1" IsRefreshing="{Binding IsRefreshing}" Command="{Binding RefreshCommand}">
+            <CollectionView x:Name="GalleryView"
+                        ItemsSource="{Binding Images}"
+                        SelectionMode="Single"
+                        SelectionChanged="OnImageSelected"
+                        RemainingItemsThreshold="15"
+                        RemainingItemsThresholdReachedCommand="{Binding LoadMoreCommand}"
+                        Scrolled="OnGalleryScrolled">
+            <CollectionView.ItemsLayout>
+                <GridItemsLayout Orientation="Vertical" Span="3" HorizontalItemSpacing="4" VerticalItemSpacing="4" />
+            </CollectionView.ItemsLayout>
+
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:GalleryImageItem">
+                    <Grid HeightRequest="120">
+                        <Border StrokeThickness="0" StrokeShape="RoundRectangle 8"
+                                BackgroundColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}">
+                            <Grid>
+                                <Label Text="&#x1F5BC;" FontSize="28" HorizontalOptions="Center" VerticalOptions="Center"
+                                       Opacity="0.4" IsVisible="{Binding ShowPlaceholder}" />
+                                <Image Source="{Binding ThumbnailPath}" Aspect="AspectFill" IsVisible="{Binding HasThumbnail}" />
+                                <Border StrokeThickness="0" StrokeShape="RoundRectangle 10"
+                                        BackgroundColor="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}"
+                                        HorizontalOptions="End" VerticalOptions="Start" Margin="0,4,4,0"
+                                        Padding="5,1" IsVisible="{Binding HasOverride}">
+                                    <Label Text="&#x270E;" FontSize="11"
+                                           TextColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPrimaryText}}" />
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+
+            <CollectionView.Footer>
+                <VerticalStackLayout Padding="12">
+                    <ActivityIndicator IsRunning="{Binding IsLoadingMore}" IsVisible="{Binding IsLoadingMore}"
+                                       Color="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}"
+                                       HorizontalOptions="Center" />
+                </VerticalStackLayout>
+            </CollectionView.Footer>
+
+            <CollectionView.EmptyView>
+                <VerticalStackLayout Padding="24" Spacing="{StaticResource ItemSpacing}" VerticalOptions="Center">
+                    <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}"
+                                       Color="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}"
+                                       HorizontalOptions="Center" />
+                    <Label Text="{Binding EmptyText}" Style="{StaticResource SubtitleLabel}"
+                           HorizontalOptions="Center" HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </CollectionView.EmptyView>
+        </CollectionView>
+        </RefreshView>
+    </Grid>
+</ContentPage>

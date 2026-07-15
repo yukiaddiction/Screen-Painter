@@ -8,6 +8,7 @@ using System.Windows.Input;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using Screen_Painter.Models;
+using Screen_Painter.Services;
 using Screen_Painter.Services.Cache;
 using Screen_Painter.Services.Scheduling;
 using Screen_Painter.Services.Security;
@@ -24,6 +25,7 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
     private readonly ICacheManager _cacheManager;
     private readonly IWallpaperService _wallpaperService;
     private readonly IEnumerable<IStorageProvider> _storageProviders;
+    private readonly IFramingOverrideService _framingOverrides;
 
     private string _collectionId = string.Empty;
     private WallpaperCollection _currentCollection = new();
@@ -119,6 +121,7 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
     public ICommand GoToSettingsCommand { get; }
     public ICommand RemoveFolderCommand { get; }
     public ICommand EditFramingCommand { get; }
+    public ICommand BrowsePicturesCommand { get; }
 
     public CollectionDetailViewModel(
         ICollectionScheduler scheduler,
@@ -126,7 +129,8 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
         ICloudAccountService cloudAccountService,
         ICacheManager cacheManager,
         IWallpaperService wallpaperService,
-        IEnumerable<IStorageProvider> storageProviders)
+        IEnumerable<IStorageProvider> storageProviders,
+        IFramingOverrideService framingOverrides)
     {
         _scheduler = scheduler;
         _secureStorage = secureStorage;
@@ -134,6 +138,7 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
         _cacheManager = cacheManager;
         _wallpaperService = wallpaperService;
         _storageProviders = storageProviders;
+        _framingOverrides = framingOverrides;
 
         Title = "Edit Collection";
 
@@ -144,6 +149,7 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
         GoToSettingsCommand = new Command(async () => await GoToSettingsAsync());
         RemoveFolderCommand = new Command<FolderSource>(async (f) => await RemoveFolderAsync(f));
         EditFramingCommand = new Command(async () => await EditFramingAsync());
+        BrowsePicturesCommand = new Command(async () => await BrowsePicturesAsync());
     }
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)
@@ -244,6 +250,24 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
         }
     }
 
+    private async Task RefreshFramingFromStoreAsync()
+    {
+        // The framing editor persists directly to storage; re-fetch so this page's
+        // stale in-memory copy never overwrites framing saved from the editor.
+        try
+        {
+            var latest = await _scheduler.GetCollectionByIdAsync(CurrentCollection.Id);
+            if (latest?.FramingConfig != null)
+            {
+                CurrentCollection.FramingConfig = latest.FramingConfig;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[RefreshFraming Error]: {ex}");
+        }
+    }
+
     private async Task SaveAsync()
     {
         if (!CurrentCollection.IsTimerEnabled && !CurrentCollection.IsScreenAwakeEnabled)
@@ -260,6 +284,7 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
 
         CurrentCollection.TriggersMigrated = true;
         CurrentCollection.Folders = FolderSources.ToList();
+        await RefreshFramingFromStoreAsync();
         await _scheduler.SaveCollectionAsync(CurrentCollection);
         _ = Task.Run(async () => await _cacheManager.PreCacheCollectionAsync(CurrentCollection, 10));
         await ShellHelper.GoToAsync("..");
@@ -274,6 +299,7 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
                 CurrentCollection.TimerIntervalMinutes = 1;
 
             CurrentCollection.Folders = FolderSources.ToList();
+            await RefreshFramingFromStoreAsync();
             await _scheduler.SaveCollectionAsync(CurrentCollection);
             await _cacheManager.PreCacheCollectionAsync(CurrentCollection, 1);
 
@@ -307,7 +333,7 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
 
             if (!string.IsNullOrEmpty(selectedImage))
             {
-                await _wallpaperService.ApplyWallpaperAsync(selectedImage, CurrentCollection.Target, CurrentCollection.FramingConfig);
+                await _wallpaperService.ApplyWallpaperAsync(selectedImage, CurrentCollection.Target, await _framingOverrides.ResolveFramingAsync(CurrentCollection, selectedImage));
                 await ShellHelper.DisplayAlert("Wallpaper Refreshed", $"Applied new wallpaper from '{CurrentCollection.Name}' to your device!", "OK");
             }
             else
@@ -385,5 +411,10 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
     private async Task EditFramingAsync()
     {
         await ShellHelper.GoToAsync($"ImageEditorPage?collectionId={CurrentCollection.Id}");
+    }
+
+    private async Task BrowsePicturesAsync()
+    {
+        await ShellHelper.GoToAsync($"CollectionGalleryPage?collectionId={CurrentCollection.Id}");
     }
 }

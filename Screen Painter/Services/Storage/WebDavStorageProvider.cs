@@ -24,6 +24,19 @@ public class WebDavDiagnosticResult
     public List<string> Details { get; set; } = new();
 }
 
+public class WebDavImageEntry
+{
+    public string Url { get; set; } = string.Empty;
+    public DateTime? LastModifiedUtc { get; set; }
+}
+
+public class WebDavDirectoryListing
+{
+    public bool Success { get; set; }
+    public List<WebDavImageEntry> Images { get; set; } = new();
+    public List<string> Subfolders { get; set; } = new();
+}
+
 public class WebDavStorageProvider : IStorageProvider
 {
     private readonly ISecureStorageService _secureStorage;
@@ -54,6 +67,7 @@ public class WebDavStorageProvider : IStorageProvider
         "  <d:prop>\r\n" +
         "    <d:resourcetype/>\r\n" +
         "    <d:displayname/>\r\n" +
+        "    <d:getlastmodified/>\r\n" +
         "  </d:prop>\r\n" +
         "</d:propfind>";
 
@@ -334,6 +348,84 @@ public class WebDavStorageProvider : IStorageProvider
         var resultSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         await ScanWebDavDirectoryRecursiveAsync(folderSource, NormalizeWebDavUrl(folderSource.PathOrUrl), result, visited, resultSet, currentDepth: 0, maxDepth: AppConstants.MaxWebDavRecursionDepth);
         return result;
+    }
+
+    public async Task<WebDavDirectoryListing> ListDirectoryEntriesAsync(FolderSource folderSource, string directoryUrl, CancellationToken ct = default)
+    {
+        var listing = new WebDavDirectoryListing();
+        var targetUrl = string.IsNullOrEmpty(directoryUrl) ? NormalizeWebDavUrl(folderSource.PathOrUrl) : NormalizeWebDavUrl(directoryUrl);
+
+        if (string.IsNullOrEmpty(targetUrl))
+            return listing;
+
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+
+            var username = await _secureStorage.DecryptAndGetAsync(folderSource.EncryptedUsername) ?? string.Empty;
+            var password = await _secureStorage.DecryptAndGetAsync(folderSource.EncryptedPasswordOrToken) ?? string.Empty;
+
+            var (response, xmlContent, finalUrl) = await SendWebDavPropfindAsync(targetUrl, username, password);
+            if (!response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.MultiStatus)
+                return listing;
+
+            ct.ThrowIfCancellationRequested();
+
+            var doc = ParseWebDavXml(xmlContent);
+            var responseNodes = doc.Descendants().Where(x => x.Name.LocalName.Equals("response", StringComparison.OrdinalIgnoreCase));
+
+            var imageSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var folderSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var resp in responseNodes)
+            {
+                var hrefNode = resp.Descendants().FirstOrDefault(x => x.Name.LocalName.Equals("href", StringComparison.OrdinalIgnoreCase));
+                var href = hrefNode?.Value;
+                if (string.IsNullOrEmpty(href)) continue;
+
+                var baseUri = new Uri(finalUrl.EndsWith('/') ? finalUrl : finalUrl + "/");
+                var fullUri = new Uri(baseUri, href).ToString();
+
+                bool isCollection = resp.Descendants().Any(x => x.Name.LocalName.Equals("collection", StringComparison.OrdinalIgnoreCase));
+
+                if (isCollection)
+                {
+                    if (!string.Equals(fullUri.TrimEnd('/'), finalUrl.TrimEnd('/'), StringComparison.OrdinalIgnoreCase) && folderSet.Add(fullUri))
+                    {
+                        listing.Subfolders.Add(fullUri);
+                    }
+                }
+                else
+                {
+                    var cleanPath = Uri.UnescapeDataString(new Uri(fullUri).AbsolutePath);
+                    var ext = Path.GetExtension(cleanPath).ToLowerInvariant();
+                    if (ImageExtensions.Valid.Contains(ext) && imageSet.Add(fullUri))
+                    {
+                        DateTime? lastModifiedUtc = null;
+                        var lastModifiedNode = resp.Descendants().FirstOrDefault(x => x.Name.LocalName.Equals("getlastmodified", StringComparison.OrdinalIgnoreCase));
+                        if (!string.IsNullOrEmpty(lastModifiedNode?.Value) &&
+                            DateTimeOffset.TryParse(lastModifiedNode.Value, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var parsed))
+                        {
+                            lastModifiedUtc = parsed.UtcDateTime;
+                        }
+
+                        listing.Images.Add(new WebDavImageEntry { Url = fullUri, LastModifiedUtc = lastModifiedUtc });
+                    }
+                }
+            }
+
+            listing.Success = true;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            // Suppress
+        }
+
+        return listing;
     }
 
     private async Task ScanWebDavDirectoryRecursiveAsync(

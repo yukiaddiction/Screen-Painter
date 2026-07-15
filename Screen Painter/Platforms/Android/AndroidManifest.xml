@@ -30,7 +30,7 @@
 	<uses-permission android:name="android.permission.WAKE_LOCK" />
 	<uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
-	<application android:allowBackup="false" android:icon="@mipmap/appicon" android:roundIcon="@mipmap/appicon_round" android:supportsRtl="true" android:enableOnBackInvokedCallback="true" android:usesCleartextTraffic="true">
+	<application android:allowBackup="false" android:icon="@mipmap/appicon" android:roundIcon="@mipmap/appicon_round" android:supportsRtl="true" android:enableOnBackInvokedCallback="false" android:usesCleartextTraffic="true">
 		<!-- Explicitly declare WallpaperForegroundService with dataSync type for Target SDK 34/35 compatibility -->
 		<service 
 			android:name="com.yukiaddiction.screenpainter.WallpaperForegroundService" 

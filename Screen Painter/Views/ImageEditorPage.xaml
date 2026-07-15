@@ -8,18 +8,49 @@
              BackgroundColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}">
 
     <Grid RowDefinitions="*, Auto" Padding="{StaticResource PageMargin}">
-        <!-- Live Framing Canvas Visualizer -->
+        <!-- Live Framing Canvas Visualizer (mirrors device screen framing) -->
         <Border Grid.Row="0" Style="{StaticResource PreviewCanvasBorder}" Margin="{StaticResource EditorCanvasMargin}">
             <Grid>
-                <!-- Framing Box / Aspect Preview -->
-                <BoxView HorizontalOptions="Center" VerticalOptions="Center" 
-                         WidthRequest="{StaticResource PreviewCardWidth}" HeightRequest="{StaticResource PreviewCardHeight}" 
-                         Color="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}" CornerRadius="{StaticResource CardCornerRadiusSm}" />
-                <Label Text="&#x1F5BC; Preview adjusts based on framing below" 
-                       HorizontalOptions="Center" VerticalOptions="Center" 
-                       Style="{StaticResource SubtitleLabel}" />
+                <!-- Ghost layer: full picture, dimmed, unclipped — shows what extends beyond the screen -->
+                <Image Source="{Binding PreviewImageSource}" Aspect="Fill" Opacity="0.35"
+                       HorizontalOptions="Center" VerticalOptions="Center"
+                       WidthRequest="{Binding GhostWidth}" HeightRequest="{Binding GhostHeight}"
+                       TranslationX="{Binding PreviewOffsetX}" TranslationY="{Binding PreviewOffsetY}"
+                       IsVisible="{Binding HasGhost}" InputTransparent="True" />
+
+                <!-- Screen-shaped clipped frame: full bitmap at true extent + proportional offsets, exactly like the applied wallpaper -->
+                <Grid HorizontalOptions="Center" VerticalOptions="Center"
+                      WidthRequest="{Binding PreviewFrameWidth}" HeightRequest="{Binding PreviewFrameHeight}"
+                      IsClippedToBounds="True" BackgroundColor="Black">
+                    <Image Source="{Binding PreviewImageSource}" Aspect="Fill"
+                           HorizontalOptions="Center" VerticalOptions="Center"
+                           WidthRequest="{Binding GhostWidth}" HeightRequest="{Binding GhostHeight}"
+                           TranslationX="{Binding PreviewOffsetX}" TranslationY="{Binding PreviewOffsetY}"
+                           IsVisible="{Binding HasGhost}" />
+                    <Image Source="{Binding PreviewImageSource}" Aspect="AspectFill"
+                           Scale="{Binding Scale}" TranslationX="{Binding PreviewOffsetX}" TranslationY="{Binding PreviewOffsetY}"
+                           IsVisible="{Binding ShowFallbackFramedImage}" />
+                    <Label Text="&#x1F5BC; No preview available" 
+                           HorizontalOptions="Center" VerticalOptions="Center" 
+                           TextColor="White" Opacity="0.6" IsVisible="{Binding ShowPlaceholder}" />
+                </Grid>
+
+                <!-- Accent outline marking the applied screen area -->
+                <Border HorizontalOptions="Center" VerticalOptions="Center"
+                        WidthRequest="{Binding PreviewFrameWidth}" HeightRequest="{Binding PreviewFrameHeight}"
+                        Stroke="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}"
+                        StrokeThickness="2" Background="Transparent" InputTransparent="True" />
+
                 <Label Text="Non-Destructive framing preview (Original file unmodified)" 
                        Style="{StaticResource SmallCaptionLabel}" HorizontalOptions="Center" VerticalOptions="End" Margin="0,0,0,12" />
+
+                <!-- Touch control overlay: drag to move, pinch to zoom -->
+                <Grid BackgroundColor="Transparent">
+                    <Grid.GestureRecognizers>
+                        <PanGestureRecognizer PanUpdated="OnPreviewPanUpdated" />
+                        <PinchGestureRecognizer PinchUpdated="OnPreviewPinchUpdated" />
+                    </Grid.GestureRecognizers>
+                </Grid>
             </Grid>
         </Border>
 
@@ -33,7 +64,7 @@
                 <Grid ColumnDefinitions="Auto, *, Auto">
                     <Label Grid.Column="0" Text="Scale" 
                            TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" VerticalOptions="Center" WidthRequest="60" />
-                    <Slider Grid.Column="1" Minimum="0.5" Maximum="3.0" Value="{Binding Scale}" 
+                    <Slider Grid.Column="1" Maximum="3.0" Minimum="{Binding ScaleMinimum}" Value="{Binding Scale}" 
                             MinimumTrackColor="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}" 
                             MaximumTrackColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}" 
                             ThumbColor="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkPrimaryText}}" />
@@ -45,7 +76,7 @@
                 <Grid ColumnDefinitions="Auto, *, Auto">
                     <Label Grid.Column="0" Text="Offset X" 
                            TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" VerticalOptions="Center" WidthRequest="60" />
-                    <Slider Grid.Column="1" Minimum="-200" Maximum="200" Value="{Binding OffsetX}" 
+                    <Slider Grid.Column="1" Maximum="{Binding OffsetXMaximum}" Minimum="{Binding OffsetXMinimum}" Value="{Binding OffsetX}" 
                             MinimumTrackColor="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}" 
                             MaximumTrackColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}" 
                             ThumbColor="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkPrimaryText}}" />
@@ -57,7 +88,7 @@
                 <Grid ColumnDefinitions="Auto, *, Auto">
                     <Label Grid.Column="0" Text="Offset Y" 
                            TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" VerticalOptions="Center" WidthRequest="60" />
-                    <Slider Grid.Column="1" Minimum="-200" Maximum="200" Value="{Binding OffsetY}" 
+                    <Slider Grid.Column="1" Maximum="{Binding OffsetYMaximum}" Minimum="{Binding OffsetYMinimum}" Value="{Binding OffsetY}" 
                             MinimumTrackColor="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}" 
                             MaximumTrackColor="{AppThemeBinding Light={StaticResource LightPageBg}, Dark={StaticResource DarkPageBg}}" 
                             ThumbColor="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkPrimaryText}}" />
@@ -71,6 +102,10 @@
                     <Button Grid.Column="1" Text="Apply Framing" Command="{Binding SaveFramingCommand}" 
                             Style="{StaticResource ActionButton}" CornerRadius="{StaticResource ButtonCornerRadius}" HeightRequest="{StaticResource StandardButtonHeight}" />
                 </Grid>
+
+                <Button Text="Remove Per-Image Override (Use Collection Default)" Command="{Binding RemoveOverrideCommand}" 
+                        IsVisible="{Binding IsPerImageMode}" Style="{StaticResource DangerButton}" 
+                        HeightRequest="{StaticResource StandardButtonHeight}" CornerRadius="{StaticResource ButtonCornerRadius}" />
             </VerticalStackLayout>
         </Border>
     </Grid>

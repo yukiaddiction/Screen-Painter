@@ -204,6 +204,9 @@
             <!-- Framing & Image Adjustments -->
             <Button Text="Adjust Picture Framing / Ratio" Command="{Binding EditFramingCommand}" Style="{StaticResource ActionButton}" HeightRequest="{StaticResource StandardButtonHeight}" />
 
+            <!-- Browse All Pictures (Per-Image Framing) -->
+            <Button Text="Browse Pictures &amp; Per-Image Framing" Command="{Binding BrowsePicturesCommand}" Style="{StaticResource PrimaryButton}" HeightRequest="{StaticResource StandardButtonHeight}" />
+
             <!-- Action Buttons: Save & Re-apply Now -->
             <Grid ColumnDefinitions="*, *" ColumnSpacing="{StaticResource ItemSpacing}" Margin="{StaticResource BottomActionMargin}">
                 <Button Grid.Column="0" Text="Re-apply &amp; Refresh" Command="{Binding ReapplyNowCommand}" Style="{StaticResource ActionButton}" />

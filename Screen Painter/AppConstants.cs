@@ -37,6 +37,16 @@ public static class AppConstants
     public static int WakeLockTimeoutMs => _settings.WakeLock.TimeoutMs;
     public static int RecentRotationThresholdSeconds => _settings.WakeLock.RecentRotationThresholdSeconds;
 
+    // Gallery
+    public static int GalleryPageSize => _settings.Gallery.PageSize;
+    public static int GalleryManifestTtlMinutes => _settings.Gallery.ManifestTtlMinutes;
+    public static int GalleryThumbnailMaxPixels => _settings.Gallery.ThumbnailMaxPixels;
+    public static int GalleryPreviewMaxPixels => _settings.Gallery.PreviewMaxPixels;
+    public static int GalleryMaxParallelThumbnailJobs => _settings.Gallery.MaxParallelThumbnailJobs;
+    public static int GalleryViewportLookahead => _settings.Gallery.ViewportLookahead;
+    public static long GalleryMaxThumbCacheSizeBytes => _settings.Gallery.MaxThumbCacheSizeBytes;
+    public static long GalleryMaxPreviewCacheSizeBytes => _settings.Gallery.MaxPreviewCacheSizeBytes;
+
     // App
     public static string DefaultAppTheme => _settings.App.DefaultTheme;
     public static int PromptMaxLength => _settings.App.PromptMaxLength;

@@ -10,6 +10,7 @@ public partial class AppShell : Shell
         InitializeComponent();
         Routing.RegisterRoute(nameof(CollectionDetailPage), typeof(CollectionDetailPage));
         Routing.RegisterRoute(nameof(ImageEditorPage), typeof(ImageEditorPage));
+        Routing.RegisterRoute(nameof(CollectionGalleryPage), typeof(CollectionGalleryPage));
         Routing.RegisterRoute(nameof(SettingsPage), typeof(SettingsPage));
         Routing.RegisterRoute(nameof(CloudFolderPickerPage), typeof(CloudFolderPickerPage));
         Routing.RegisterRoute(nameof(LogViewerPage), typeof(LogViewerPage));
@@ -19,5 +20,27 @@ public partial class AppShell : Shell
     {
         FlyoutIsPresented = false; // Close drawer
         await GoToAsync(nameof(SettingsPage));
+    }
+
+    protected override bool OnBackButtonPressed()
+    {
+        var stack = Navigation?.NavigationStack;
+        if (stack != null && stack.Count > 1)
+        {
+            Dispatcher.Dispatch(async () =>
+            {
+                try
+                {
+                    await GoToAsync("..");
+                }
+                catch (System.Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[BackNavigation Error]: {ex.Message}");
+                }
+            });
+            return true; // Handled — go to previous page instead of quitting
+        }
+
+        return base.OnBackButtonPressed(); // Root page — default behavior (exit)
     }
 }
