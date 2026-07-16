@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Maui.Authentication;
 using Screen_Painter.Models;
@@ -42,7 +43,7 @@ public class OAuthStorageProvider : IStorageProvider
         }
     }
 
-    public async Task<List<string>> ListImageIdentifiersAsync(FolderSource folderSource)
+    public async Task<List<string>> ListImageIdentifiersAsync(FolderSource folderSource, CancellationToken ct = default)
     {
         var result = new List<string>();
         if (string.IsNullOrEmpty(folderSource.PathOrUrl))

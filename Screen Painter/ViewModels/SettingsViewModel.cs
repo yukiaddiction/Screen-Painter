@@ -5,8 +5,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Microsoft.Extensions.Logging;
+using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using Screen_Painter.Models;
+using Screen_Painter.Services;
 using Screen_Painter.Services.Logging;
 using Screen_Painter.Services.Security;
 using Screen_Painter.Services.Storage;
@@ -20,6 +22,7 @@ public class SettingsViewModel : BaseViewModel
     private readonly WebDavStorageProvider _webDavTester;
     private readonly LogService _logService;
     private readonly ILogger<SettingsViewModel> _logger;
+    private readonly IUpdateCheckService _updateCheckService;
 
     public ObservableCollection<CloudAccount> CloudAccounts { get; } = new();
 
@@ -31,12 +34,34 @@ public class SettingsViewModel : BaseViewModel
     public ICommand RequestBatteryExemptionCommand { get; }
     public ICommand ViewLogsCommand { get; }
     public ICommand CopyLogsCommand { get; }
+    public ICommand CheckForUpdatesCommand { get; }
+    public ICommand OpenGitHubCommand { get; }
 
     private string _logSummary = string.Empty;
     public string LogSummary
     {
         get => _logSummary;
         set => SetProperty(ref _logSummary, value);
+    }
+
+    private string _updateStatusText = string.Empty;
+    public string UpdateStatusText
+    {
+        get => _updateStatusText;
+        set => SetProperty(ref _updateStatusText, value);
+    }
+
+    public string AppVersionText => $"Version {Microsoft.Maui.ApplicationModel.AppInfo.Current.VersionString}";
+
+    private bool _isAutoUpdateCheckEnabled;
+    public bool IsAutoUpdateCheckEnabled
+    {
+        get => _isAutoUpdateCheckEnabled;
+        set
+        {
+            if (SetProperty(ref _isAutoUpdateCheckEnabled, value))
+                Microsoft.Maui.Storage.Preferences.Default.Set("AutoUpdateCheck", value);
+        }
     }
 
     private bool _isBatteryExempt;
@@ -79,7 +104,8 @@ public class SettingsViewModel : BaseViewModel
         ISecureStorageService secureStorage,
         IEnumerable<IStorageProvider> storageProviders,
         LogService logService,
-        ILogger<SettingsViewModel> logger)
+        ILogger<SettingsViewModel> logger,
+        IUpdateCheckService updateCheckService)
     {
         _cloudAccountService = cloudAccountService;
         _secureStorage = secureStorage;
@@ -87,10 +113,13 @@ public class SettingsViewModel : BaseViewModel
             ?? throw new InvalidOperationException("WebDavStorageProvider not registered in DI");
         _logService = logService;
         _logger = logger;
+        _updateCheckService = updateCheckService;
         Title = "Cloud Accounts & Settings";
 
         var themePref = Microsoft.Maui.Storage.Preferences.Default.Get("AppTheme", AppConstants.DefaultAppTheme);
         _isDarkMode = themePref == "Dark";
+
+        _isAutoUpdateCheckEnabled = Microsoft.Maui.Storage.Preferences.Default.Get("AutoUpdateCheck", true);
 
         LoadAccountsCommand = new Command(async () => await LoadAccountsAsync());
         AddWebDavAccountCommand = new Command(async () => await AddWebDavAccountAsync());
@@ -100,6 +129,8 @@ public class SettingsViewModel : BaseViewModel
         RequestBatteryExemptionCommand = new Command(async () => await RequestBatteryExemptionAsync());
         ViewLogsCommand = new Command(async () => await ShellHelper.GoToAsync(nameof(Views.LogViewerPage)));
         CopyLogsCommand = new Command(async () => await _logService.CopyLogsToClipboardAsync());
+        CheckForUpdatesCommand = new Command(async () => await CheckForUpdatesAsync());
+        OpenGitHubCommand = new Command(async () => await OpenGitHubAsync());
 
         LogSummary = _logService.GetLogSummary();
 
@@ -304,5 +335,73 @@ public class SettingsViewModel : BaseViewModel
 #else
         await ShellHelper.DisplayAlert("Battery Optimization", "Not required on this platform.", "OK");
 #endif
+    }
+
+    private async Task CheckForUpdatesAsync()
+    {
+        IsBusy = true;
+        UpdateStatusText = "Checking…";
+        try
+        {
+            var result = await _updateCheckService.CheckForUpdateAsync(bypassCooldown: true);
+
+            if (!string.IsNullOrEmpty(result.ErrorMessage))
+            {
+                UpdateStatusText = "Could not check for updates.";
+                await ShellHelper.DisplayAlert("Update Check Failed", $"Could not reach GitHub: {result.ErrorMessage}", "OK");
+                return;
+            }
+
+            if (result.UpdateAvailable)
+            {
+                UpdateStatusText = $"Update available: v{result.LatestVersion}";
+                bool open = await ShellHelper.DisplayAlert(
+                    "Update Available",
+                    $"Version {result.LatestVersion} is available.\n\n{result.ReleaseNotes}",
+                    "Open Release Page",
+                    "Later");
+                if (open && !string.IsNullOrEmpty(result.ReleaseUrl))
+                    await Browser.Default.OpenAsync(result.ReleaseUrl, BrowserLaunchMode.SystemPreferred);
+            }
+            else
+            {
+                UpdateStatusText = "You're up to date!";
+                await ShellHelper.DisplayAlert("Up to Date", "You are running the latest version.", "OK");
+            }
+        }
+        catch (Exception)
+        {
+            UpdateStatusText = "Update check failed.";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    public async Task PerformAutoCheckAsync()
+    {
+        if (!IsAutoUpdateCheckEnabled)
+            return;
+
+        try
+        {
+            var result = await _updateCheckService.CheckForUpdateAsync(bypassCooldown: false);
+
+            if (result.UpdateAvailable)
+            {
+                UpdateStatusText = $"Update available: v{result.LatestVersion}";
+            }
+        }
+        catch
+        {
+        }
+    }
+
+    private static async Task OpenGitHubAsync()
+    {
+        await Browser.Default.OpenAsync(
+            "https://github.com/yukiaddiction/Screen-Painter",
+            BrowserLaunchMode.SystemPreferred);
     }
 }

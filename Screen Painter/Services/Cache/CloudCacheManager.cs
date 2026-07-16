@@ -18,6 +18,7 @@ public class CloudCacheManager : ICacheManager
     private readonly ILogger _logger;
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> _refillsInProgress = new();
     private DateTime _lastCacheSizeCheck = DateTime.MinValue;
+    private readonly object _cacheSizeCheckLock = new();
     private static readonly TimeSpan CacheSizeCheckInterval = TimeSpan.FromMinutes(1);
 
     public CloudCacheManager(IEnumerable<IStorageProvider> storageProviders, ILogger<CloudCacheManager> logger)
@@ -63,17 +64,24 @@ public class CloudCacheManager : ICacheManager
         var allCachedFiles = Directory.GetFiles(cacheDir);
         if (allCachedFiles.Length == 0)
         {
-            _ = Task.Run(async () =>
+            if (_refillsInProgress.TryAdd(collection.Id, true))
             {
-                try
+                _ = Task.Run(async () =>
                 {
-                    await PreCacheCollectionAsync(collection);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Background pre-cache failed for {Id}", collection.Id);
-                }
-            });
+                    try
+                    {
+                        await PreCacheCollectionAsync(collection);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Background pre-cache failed for {Id}", collection.Id);
+                    }
+                    finally
+                    {
+                        _refillsInProgress.TryRemove(collection.Id, out _);
+                    }
+                });
+            }
 
             var localFolder = collection.Folders?.FirstOrDefault(f => f.Type == StorageType.Local);
             if (localFolder != null)
@@ -223,10 +231,13 @@ public class CloudCacheManager : ICacheManager
 
     private void EnforceCacheSizeLimit(string cacheDir)
     {
-        var now = DateTime.UtcNow;
-        if (now - _lastCacheSizeCheck < CacheSizeCheckInterval)
-            return;
-        _lastCacheSizeCheck = now;
+        lock (_cacheSizeCheckLock)
+        {
+            var now = DateTime.UtcNow;
+            if (now - _lastCacheSizeCheck < CacheSizeCheckInterval)
+                return;
+            _lastCacheSizeCheck = now;
+        }
 
         try
         {
@@ -254,9 +265,16 @@ public class CloudCacheManager : ICacheManager
             int evicted = 0;
             foreach (var file in allFiles)
             {
-                totalSize -= file.Length;
-                file.Delete();
-                evicted++;
+                try
+                {
+                    file.Delete();
+                    totalSize -= file.Length;
+                    evicted++;
+                }
+                catch (IOException)
+                {
+                    // File in use or already deleted — skip it this round.
+                }
                 if (totalSize <= AppConstants.MaxCacheSizeBytes)
                     break;
             }

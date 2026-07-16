@@ -137,12 +137,25 @@ public class CollectionGalleryViewModel : BaseViewModel, IQueryAttributable
         if (query.TryGetValue("collectionId", out var idObj) && idObj is string id && !string.IsNullOrEmpty(id) && id != _collectionId)
         {
             _collectionId = id;
-            _ = InitializeAsync();
+            _ = MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                try
+                {
+                    await InitializeAsync();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Gallery Init Error]: {ex}");
+                }
+            });
         }
     }
 
+    private int _initVersion;
+
     private async Task InitializeAsync()
     {
+        var version = Interlocked.Increment(ref _initVersion);
         IsBusy = true;
         EmptyText = "Scanning folders…";
         try
@@ -152,6 +165,8 @@ public class CollectionGalleryViewModel : BaseViewModel, IQueryAttributable
             _sessionCts = new CancellationTokenSource();
 
             _collection = await _scheduler.GetCollectionByIdAsync(_collectionId);
+            if (version != Volatile.Read(ref _initVersion))
+                return; // Superseded by a newer initialization
             if (_collection == null)
             {
                 StatusText = "Collection not found.";
@@ -160,12 +175,16 @@ public class CollectionGalleryViewModel : BaseViewModel, IQueryAttributable
 
             Title = $"Pictures — {_collection.Name}";
             _overrideKeys = await _framingOverrides.GetOverrideKeysAsync(_collectionId);
+            if (version != Volatile.Read(ref _initVersion))
+                return;
             _prunedThisSession = false;
 
             _enumerator = new PagedImageEnumerator(_collection, _storageProviders);
 
             Images.Clear();
             var manifest = await _manifestStore.LoadAsync(_collectionId);
+            if (version != Volatile.Read(ref _initVersion))
+                return;
             if (manifest != null)
             {
                 BuildPreviousModifiedMap(manifest);

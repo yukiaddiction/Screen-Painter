@@ -14,41 +14,62 @@ namespace Screen_Painter.Platforms.Android;
 public class AlarmReceiver : BroadcastReceiver
 {
     private const long DefaultAlarmIntervalMs = 15 * 60 * 1000;
+    private const long RetryAlarmIntervalMs = 5 * 60 * 1000;
 
     public override void OnReceive(Context? context, Intent? intent)
     {
         if (context == null) return;
 
-        bool hasEnabledCollections = CheckForEnabledCollections();
-
-        if (hasEnabledCollections)
+        // Run the collection check + service start off the main thread; the
+        // synchronous file I/O in GetAllCollectionsAsync could otherwise trip the
+        // BroadcastReceiver's ANR limit on slow storage.
+        var pendingResult = GoAsync();
+        _ = System.Threading.Tasks.Task.Run(async () =>
         {
-            var serviceIntent = new Intent(context, typeof(WallpaperForegroundService));
             try
             {
-                if (OperatingSystem.IsAndroidVersionAtLeast(26))
-                    context.StartForegroundService(serviceIntent);
-                else
-                    context.StartService(serviceIntent);
+                bool hasEnabledCollections = await CheckForEnabledCollectionsAsync();
+                if (!hasEnabledCollections)
+                    return;
+
+                bool started = false;
+                var serviceIntent = new Intent(context, typeof(WallpaperForegroundService));
+                try
+                {
+                    if (OperatingSystem.IsAndroidVersionAtLeast(26))
+                        context.StartForegroundService(serviceIntent);
+                    else
+                        context.StartService(serviceIntent);
+                    started = true;
+                }
+                catch (Exception ex)
+                {
+                    GetLogger().LogWarning(ex, "AlarmReceiver could not start foreground service (background start restriction)");
+                }
+
+                // Keep the watchdog chain alive; retry sooner if the start failed so the
+                // service comes back quickly once restrictions lift.
+                Schedule(context, started ? DefaultAlarmIntervalMs : RetryAlarmIntervalMs);
             }
             catch (Exception ex)
             {
-                GetLogger().LogWarning(ex, "AlarmReceiver could not start foreground service (background start restriction)");
+                GetLogger().LogError(ex, "AlarmReceiver error");
             }
-        }
-
-        if (hasEnabledCollections)
-            Schedule(context);
+            finally
+            {
+                pendingResult?.Finish();
+            }
+        });
     }
 
-    private static bool CheckForEnabledCollections()
+    private static async System.Threading.Tasks.Task<bool> CheckForEnabledCollectionsAsync()
     {
         try
         {
             var scheduler = ServiceAccessor.GetService<ICollectionScheduler>();
             if (scheduler == null) return true; // fail-safe: can't check, assume yes
 
-            var collections = scheduler.GetAllCollectionsAsync().GetAwaiter().GetResult();
+            var collections = await scheduler.GetAllCollectionsAsync();
             return collections.Any(c => c.IsEnabled);
         }
         catch
@@ -57,7 +78,9 @@ public class AlarmReceiver : BroadcastReceiver
         }
     }
 
-    public static void Schedule(Context context)
+    public static void Schedule(Context context) => Schedule(context, DefaultAlarmIntervalMs);
+
+    public static void Schedule(Context context, long intervalMs)
     {
         var alarmManager = (AlarmManager?)context.GetSystemService(Context.AlarmService);
         if (alarmManager == null) return;
@@ -72,7 +95,6 @@ public class AlarmReceiver : BroadcastReceiver
         var pending = PendingIntent.GetBroadcast(context, 0, intent, flags);
         if (pending == null) return;
 
-        long intervalMs = DefaultAlarmIntervalMs;
         long triggerTime = SystemClock.ElapsedRealtime() + intervalMs;
 
         try

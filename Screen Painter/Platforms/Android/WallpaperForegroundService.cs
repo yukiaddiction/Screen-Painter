@@ -22,7 +22,7 @@ using Screen_Painter.Services.Wallpaper;
 
 namespace Screen_Painter.Platforms.Android;
 
-[Service(Name = "com.yukiaddiction.screenpainter.WallpaperForegroundService", ForegroundServiceType = ForegroundService.TypeDataSync)]
+[Service(Name = "com.yukiaddiction.screenpainter.WallpaperForegroundService", ForegroundServiceType = ForegroundService.TypeSpecialUse)]
 public class WallpaperForegroundService : Service
 {
     private const int NotificationId = 1001;
@@ -58,15 +58,28 @@ public class WallpaperForegroundService : Service
     [Register("onStartCommand", "(Landroid/content/Intent;II)I", "GetOnStartCommand_Landroid_content_Intent_IIHandler")]
     public override StartCommandResult OnStartCommand(Intent? intent, StartCommandFlags flags, int startId)
     {
-        var notification = BuildNotification();
+        try
+        {
+            var notification = BuildNotification();
 
-        if (OperatingSystem.IsAndroidVersionAtLeast(34))
-        {
-            StartForeground(NotificationId, notification, ForegroundService.TypeDataSync);
+            if (OperatingSystem.IsAndroidVersionAtLeast(34))
+            {
+                StartForeground(NotificationId, notification, ForegroundService.TypeSpecialUse);
+            }
+            else
+            {
+                StartForeground(NotificationId, notification);
+            }
         }
-        else
+        catch (Exception ex)
         {
-            StartForeground(NotificationId, notification);
+            // StartForeground can throw (e.g. ForegroundServiceStartNotAllowedException on
+            // Android 12+). Stop cleanly and let the watchdog alarm retry later instead of
+            // crashing the whole process.
+            GetLogger().LogError(ex, "StartForeground failed — stopping service, watchdog will retry");
+            try { AlarmReceiver.Schedule(this); } catch { }
+            StopSelf();
+            return StartCommandResult.Sticky;
         }
 
         if (_timerCts != null && !_timerCts.IsCancellationRequested)
@@ -86,6 +99,50 @@ public class WallpaperForegroundService : Service
         AlarmReceiver.Schedule(this);
 
         return StartCommandResult.Sticky;
+    }
+
+    /// <summary>
+    /// Called by the system when a time-limited foreground service type reaches its limit
+    /// (Android 14+). specialUse is not time-limited, but handle it defensively: stop
+    /// cleanly and schedule the watchdog alarm to restart, instead of the system throwing
+    /// ForegroundServiceDidNotStopInTimeException and crashing the app.
+    /// </summary>
+    public override void OnTimeout(int startId)
+    {
+        HandleServiceTimeout(startId);
+        base.OnTimeout(startId);
+    }
+
+    private void HandleServiceTimeout(int startId)
+    {
+        try
+        {
+            GetLogger().LogWarning("Foreground service timeout reached (startId: {StartId}) — stopping and scheduling restart", startId);
+            AlarmReceiver.Schedule(this);
+            StopForeground(StopForegroundFlags.Remove);
+            StopSelf();
+        }
+        catch (Exception ex)
+        {
+            GetLogger().LogError(ex, "Error handling service timeout");
+        }
+    }
+
+    /// <summary>
+    /// Called when the user swipes the app away from recents. The service may be killed
+    /// shortly after — schedule the watchdog alarm so it restarts.
+    /// </summary>
+    public override void OnTaskRemoved(Intent? rootIntent)
+    {
+        try
+        {
+            GetLogger().LogInformation("Task removed — scheduling watchdog restart");
+            AlarmReceiver.Schedule(this);
+        }
+        catch
+        {
+        }
+        base.OnTaskRemoved(rootIntent);
     }
 
     private async Task RunBackgroundTimerLoopAsync(CancellationToken token)
@@ -492,6 +549,16 @@ public class WallpaperForegroundService : Service
 
         if (ReferenceEquals(_instance, this))
             _instance = null;
+
+        // Keep the watchdog alarm chain alive so the service self-heals within one
+        // alarm interval if it was killed by the system (low memory, timeout, etc.).
+        try
+        {
+            AlarmReceiver.Schedule(this);
+        }
+        catch
+        {
+        }
 
         base.OnDestroy();
     }

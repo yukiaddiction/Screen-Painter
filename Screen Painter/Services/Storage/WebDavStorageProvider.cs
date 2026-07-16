@@ -54,11 +54,28 @@ public class WebDavStorageProvider : IStorageProvider
 
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> ServerSemaphores = new();
     private const int MaxConcurrentPerServer = 3;
+    private const int MaxTrackedServers = 16;
 
     private static SemaphoreSlim GetServerSemaphore(string url)
     {
         var uri = new Uri(url);
         var baseUrl = $"{uri.Scheme}://{uri.Host}:{uri.Port}";
+
+        if (ServerSemaphores.Count > MaxTrackedServers)
+        {
+            foreach (var entry in ServerSemaphores)
+            {
+                if (entry.Key == baseUrl)
+                    continue;
+                // Only prune fully idle semaphores (no in-flight requests holding slots)
+                if (entry.Value.CurrentCount == MaxConcurrentPerServer &&
+                    ServerSemaphores.TryRemove(entry.Key, out var removed))
+                {
+                    removed.Dispose();
+                }
+            }
+        }
+
         return ServerSemaphores.GetOrAdd(baseUrl, _ => new SemaphoreSlim(MaxConcurrentPerServer, MaxConcurrentPerServer));
     }
     private static readonly string PropfindBody = 
@@ -338,7 +355,7 @@ public class WebDavStorageProvider : IStorageProvider
         }
     }
 
-    public async Task<List<string>> ListImageIdentifiersAsync(FolderSource folderSource)
+    public async Task<List<string>> ListImageIdentifiersAsync(FolderSource folderSource, CancellationToken ct = default)
     {
         var result = new List<string>();
         if (string.IsNullOrEmpty(folderSource.PathOrUrl))

@@ -121,6 +121,43 @@
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
                 </CollectionView>
+
+                <!-- About &amp; Updates Card -->
+                <Border Style="{StaticResource SectionBorder}">
+                    <VerticalStackLayout Spacing="{StaticResource ItemSpacing}">
+                        <Label Text="About Screen Painter" Style="{StaticResource SectionSubtitleLabel}" FontAttributes="Bold" 
+                               TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" />
+                        <HorizontalStackLayout Spacing="{StaticResource CompactSpacing}">
+                            <Label Text="{Binding AppVersionText}" Style="{StaticResource BodySmallLabel}" />
+                            <Label Text=" • " Style="{StaticResource BodySmallLabel}" 
+                                   TextColor="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkSecondaryText}}" />
+                            <Label Text="Open-Source Wallpaper Rotator" Style="{StaticResource BodySmallLabel}" 
+                                   TextColor="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkSecondaryText}}" />
+                        </HorizontalStackLayout>
+
+                        <!-- Auto-Update Check Toggle -->
+                        <Grid ColumnDefinitions="*, Auto">
+                            <Label Grid.Column="0" Text="Auto-check for updates on startup" VerticalOptions="Center"
+                                   Style="{StaticResource BodySmallLabel}" 
+                                   TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" />
+                            <Switch Grid.Column="1" IsToggled="{Binding IsAutoUpdateCheckEnabled}" 
+                                    Style="{StaticResource ThemedSwitch}" VerticalOptions="Center" />
+                        </Grid>
+
+                        <!-- Update Status + Manual Check -->
+                        <Label Text="{Binding UpdateStatusText}" Style="{StaticResource CaptionLabel}" FontAttributes="Italic" 
+                               TextColor="{AppThemeBinding Light={StaticResource LightAccent}, Dark={StaticResource DarkAccent}}" />
+                        <HorizontalStackLayout Spacing="{StaticResource ItemSpacing}">
+                            <Button Text="Check for Updates" 
+                                    Command="{Binding CheckForUpdatesCommand}"
+                                    Style="{StaticResource InlinePrimaryButton}" />
+                            <Button Text="View on GitHub" 
+                                    Command="{Binding OpenGitHubCommand}"
+                                    Style="{StaticResource SecondaryButton}" 
+                                    HeightRequest="{StaticResource SmallButtonHeight}" />
+                        </HorizontalStackLayout>
+                    </VerticalStackLayout>
+                </Border>
             </VerticalStackLayout>
         </ScrollView>
     </Grid>

@@ -386,22 +386,32 @@ public class ImageEditorViewModel : BaseViewModel, IQueryAttributable
             _folderId = DecodeQueryValue(folderId);
         }
 
+        string? decodedPreview = null;
         if (query.TryGetValue("previewPath", out var previewObj) && previewObj is string preview && !string.IsNullOrEmpty(preview))
         {
-            var decodedPreview = DecodeQueryValue(preview);
-            if (File.Exists(decodedPreview))
-            {
-                PreviewImageSource = decodedPreview;
-            }
+            decodedPreview = DecodeQueryValue(preview);
         }
 
         OnPropertyChanged(nameof(IsPerImageMode));
         Title = IsPerImageMode ? "Per-Image Framing Editor" : "Non-Destructive Image Framing Editor";
 
-        _ = LoadFramingConfigAsync(_collectionId).ContinueWith(t =>
+        _ = MainThread.InvokeOnMainThreadAsync(async () =>
         {
-            if (t.IsFaulted && t.Exception != null)
-                System.Diagnostics.Debug.WriteLine($"[ImageEditor Load Error]: {t.Exception}");
+            try
+            {
+                if (!string.IsNullOrEmpty(decodedPreview))
+                {
+                    var exists = await Task.Run(() => File.Exists(decodedPreview));
+                    if (exists)
+                        PreviewImageSource = decodedPreview;
+                }
+
+                await LoadFramingConfigAsync(_collectionId);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ImageEditor Load Error]: {ex}");
+            }
         });
     }
 

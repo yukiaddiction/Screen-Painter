@@ -95,10 +95,16 @@ public class CloudFolderPickerViewModel : BaseViewModel, IQueryAttributable
         // Trigger folder scan ONLY after all query parameters are fully populated!
         if (!string.IsNullOrEmpty(CurrentUrl))
         {
-            _ = LoadFoldersAsync(CurrentUrl).ContinueWith(t =>
+            _ = MainThread.InvokeOnMainThreadAsync(async () =>
             {
-                if (t.IsFaulted && t.Exception != null)
-                    System.Diagnostics.Debug.WriteLine($"[CloudFolderPicker Load Error]: {t.Exception}");
+                try
+                {
+                    await LoadFoldersAsync(CurrentUrl);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[CloudFolderPicker Load Error]: {ex}");
+                }
             });
         }
     }

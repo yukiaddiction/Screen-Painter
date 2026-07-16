@@ -31,11 +31,16 @@
 	<uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
 	<application android:allowBackup="false" android:icon="@mipmap/appicon" android:roundIcon="@mipmap/appicon_round" android:supportsRtl="true" android:enableOnBackInvokedCallback="false" android:usesCleartextTraffic="true">
-		<!-- Explicitly declare WallpaperForegroundService with dataSync type for Target SDK 34/35 compatibility -->
+		<!-- specialUse FGS type: exempt from the 6h/day dataSync timeout on Android 14/15. -->
+		<!-- The subtype property declares the reason for Play Store review. -->
 		<service 
 			android:name="com.yukiaddiction.screenpainter.WallpaperForegroundService" 
-			android:foregroundServiceType="dataSync" 
+			android:foregroundServiceType="specialUse" 
 			android:enabled="true" 
-			android:exported="false" />
+			android:exported="false">
+			<property
+				android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+				android:value="Automatic wallpaper rotation triggered by timers and screen events; requires a persistent service to apply wallpapers reliably." />
+		</service>
 	</application>
 </manifest>

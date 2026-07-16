@@ -157,7 +157,17 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
         if (query.TryGetValue("id", out var idObj) && idObj is string id && id != _collectionId)
         {
             _collectionId = id;
-            _ = LoadCollectionAsync(id);
+            _ = MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                try
+                {
+                    await LoadCollectionAsync(id);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[CollectionDetail Load Error]: {ex}");
+                }
+            });
         }
 
         if (query.TryGetValue("SelectedFolderSource", out var folderObj) && folderObj is FolderSource folder)
@@ -168,11 +178,23 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
                 {
                     FolderSources.Add(folder);
                     CurrentCollection.Folders = FolderSources.ToList();
-                    _ = _scheduler.SaveCollectionAsync(CurrentCollection);
+                    _ = SaveCollectionSafeAsync();
 
                     FolderSelectionStatusMessage = $"✓ Cloud Folder Added: {folder.Name}";
                 }
             }
+        }
+    }
+
+    private async Task SaveCollectionSafeAsync()
+    {
+        try
+        {
+            await _scheduler.SaveCollectionAsync(CurrentCollection);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CollectionDetail Save Error]: {ex}");
         }
     }
 
@@ -286,7 +308,18 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
         CurrentCollection.Folders = FolderSources.ToList();
         await RefreshFramingFromStoreAsync();
         await _scheduler.SaveCollectionAsync(CurrentCollection);
-        _ = Task.Run(async () => await _cacheManager.PreCacheCollectionAsync(CurrentCollection, 10));
+        var collectionToCache = CurrentCollection;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _cacheManager.PreCacheCollectionAsync(collectionToCache, 10);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[PreCache Error]: {ex}");
+            }
+        });
         await ShellHelper.GoToAsync("..");
     }
 

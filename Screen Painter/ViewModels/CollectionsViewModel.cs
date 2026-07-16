@@ -28,6 +28,7 @@ public class CollectionsViewModel : BaseViewModel
     private readonly IEnumerable<IStorageProvider> _storageProviders;
     private readonly IFramingOverrideService _framingOverrides;
     private CancellationTokenSource? _loadCts;
+    private readonly SemaphoreSlim _loadSemaphore = new(1, 1);
     private static bool _foregroundServiceStarted;
     private readonly ILogger<CollectionsViewModel> _logger;
 
@@ -241,77 +242,88 @@ public class CollectionsViewModel : BaseViewModel
 
     public async Task LoadCollectionsAsync()
     {
-        IsBusy = true;
+        if (!await _loadSemaphore.WaitAsync(TimeSpan.Zero))
+            return;
+
         try
         {
-            await EnsureRequiredPermissionsAsync();
+            IsBusy = true;
 
-            var list = await _scheduler.GetAllCollectionsAsync();
-
-            if (list.Any(c => c.IsEnabled))
+            try
             {
-                StartForegroundServiceIfNeeded();
-            }
+                await EnsureRequiredPermissionsAsync();
 
-            Collections.Clear();
-            foreach (var item in list)
-            {
-                item.IsPreviewLoading = true;
-                Collections.Add(item);
-            }
+                var list = await _scheduler.GetAllCollectionsAsync();
 
-            IsBusy = false;
-
-            // Cancel any in-flight cloud count tasks from a previous load
-            _loadCts?.Cancel();
-            _loadCts?.Dispose();
-            _loadCts = new CancellationTokenSource();
-            var token = _loadCts.Token;
-
-            _ = Task.Run(async () =>
-            {
-                var tasks = list.Select(async collection =>
+                if (list.Any(c => c.IsEnabled))
                 {
-                    try
-                    {
-                        if (token.IsCancellationRequested) return;
-                        var sampleImages = await ResolveRandomPreviewImagesAsync(collection, PreviewCollageCount, token);
-                        if (token.IsCancellationRequested) return;
-                        MainThread.BeginInvokeOnMainThread(() =>
-                        {
-                            try
-                            {
-                                if (!token.IsCancellationRequested)
-                                {
-                                    collection.PreviewImagePaths = sampleImages;
-                                    collection.PreviewImagePath = sampleImages.FirstOrDefault();
-                                    collection.IsPreviewLoading = false;
-                                }
-                            }
-                            catch (InvalidOperationException)
-                            {
-                                // Activity destroyed — safe to ignore
-                            }
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"[Scan Background Error]: {ex.Message}");
-                        MainThread.BeginInvokeOnMainThread(() =>
-                        {
-                            try { collection.IsPreviewLoading = false; }
-                            catch (InvalidOperationException) { }
-                        });
-                    }
-                });
+                    StartForegroundServiceIfNeeded();
+                }
 
-                await Task.WhenAll(tasks);
-            });
+                Collections.Clear();
+                foreach (var item in list)
+                {
+                    item.IsPreviewLoading = true;
+                    Collections.Add(item);
+                }
+
+                IsBusy = false;
+
+                // Cancel any in-flight cloud count tasks from a previous load
+                _loadCts?.Cancel();
+                _loadCts?.Dispose();
+                _loadCts = new CancellationTokenSource();
+                var token = _loadCts.Token;
+
+                _ = Task.Run(async () =>
+                {
+                    var tasks = list.Select(async collection =>
+                    {
+                        try
+                        {
+                            if (token.IsCancellationRequested) return;
+                            var sampleImages = await ResolveRandomPreviewImagesAsync(collection, PreviewCollageCount, token);
+                            if (token.IsCancellationRequested) return;
+                            MainThread.BeginInvokeOnMainThread(() =>
+                            {
+                                try
+                                {
+                                    if (!token.IsCancellationRequested)
+                                    {
+                                        collection.PreviewImagePaths = sampleImages;
+                                        collection.PreviewImagePath = sampleImages.FirstOrDefault();
+                                        collection.IsPreviewLoading = false;
+                                    }
+                                }
+                                catch (InvalidOperationException)
+                                {
+                                    // Activity destroyed — safe to ignore
+                                }
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"[Scan Background Error]: {ex.Message}");
+                            MainThread.BeginInvokeOnMainThread(() =>
+                            {
+                                try { collection.IsPreviewLoading = false; }
+                                catch (InvalidOperationException) { }
+                            });
+                        }
+                    });
+
+                    await Task.WhenAll(tasks);
+                });
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[LoadCollectionsAsync Error]: {ex.Message}");
+                IsBusy = false;
+            }
         }
-        catch (Exception ex)
+        finally
         {
-            Debug.WriteLine($"[LoadCollectionsAsync Error]: {ex.Message}");
-            IsBusy = false;
+            _loadSemaphore.Release();
         }
     }
 
@@ -338,7 +350,7 @@ public class CollectionsViewModel : BaseViewModel
                 var provider = _storageProviders.FirstOrDefault(p => p.SupportedType == StorageType.Local);
                 if (provider != null)
                 {
-                    var files = await provider.ListImageIdentifiersAsync(folder);
+                    var files = await provider.ListImageIdentifiersAsync(folder, ct);
                     allImages.AddRange(files);
                 }
             }

@@ -15,6 +15,13 @@ public partial class LogViewerPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        await _viewModel.LoadTailAsync();
+        try
+        {
+            await _viewModel.LoadTailAsync();
+        }
+        catch (System.Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[LogViewer OnAppearing Error]: {ex}");
+        }
     }
 }

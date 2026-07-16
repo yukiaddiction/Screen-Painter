@@ -55,6 +55,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IFramingOverrideService, FramingOverrideService>();
         builder.Services.AddSingleton<IThumbnailService, ThumbnailService>();
         builder.Services.AddSingleton<IGalleryManifestStore, GalleryManifestStore>();
+        builder.Services.AddSingleton<IUpdateCheckService, UpdateCheckService>();
 
         // Register Logging Services
         builder.Services.AddSingleton<LogService>();

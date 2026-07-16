@@ -181,7 +181,7 @@ public class ThumbnailService : IThumbnailService
                 if (!GenerateScaledImage(tmpPath, destPath, maxPixels))
                     return null;
 
-                EnforceCacheLimit(dirName, cacheLimitBytes);
+                ScheduleCacheLimitEnforcement(dirName, cacheLimitBytes);
                 return destPath;
             }
             finally
@@ -250,7 +250,7 @@ public class ThumbnailService : IThumbnailService
 #endif
     }
 
-    private void EnforceCacheLimit(string dirName, long limitBytes)
+    private void ScheduleCacheLimitEnforcement(string dirName, long limitBytes)
     {
         lock (_sizeCheckLock)
         {
@@ -260,6 +260,13 @@ public class ThumbnailService : IThumbnailService
             _lastSizeChecks[dirName] = now;
         }
 
+        // Run eviction on a background thread so the file enumeration/deletion never
+        // blocks the thumbnail job pipeline (the _jobLimiter semaphore holder).
+        _ = Task.Run(() => EnforceCacheLimit(dirName, limitBytes));
+    }
+
+    private void EnforceCacheLimit(string dirName, long limitBytes)
+    {
         try
         {
             var cacheDir = GetCacheDir(dirName);
@@ -280,9 +287,16 @@ public class ThumbnailService : IThumbnailService
             int evicted = 0;
             foreach (var file in allFiles)
             {
-                totalSize -= file.Length;
-                file.Delete();
-                evicted++;
+                try
+                {
+                    file.Delete();
+                    totalSize -= file.Length;
+                    evicted++;
+                }
+                catch (IOException)
+                {
+                    // File in use by a concurrent job — skip it this round.
+                }
                 if (totalSize <= limitBytes)
                     break;
             }

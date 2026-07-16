@@ -15,16 +15,30 @@ public partial class CollectionGalleryPage : ContentPage
         BindingContext = viewModel;
     }
 
-    protected override void OnAppearing()
+    protected override async void OnAppearing()
     {
         base.OnAppearing();
-        _ = _viewModel.RefreshOverridesAsync();
+        try
+        {
+            await _viewModel.RefreshOverridesAsync();
+        }
+        catch (System.Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Gallery OnAppearing Error]: {ex}");
+        }
     }
 
-    protected override void OnDisappearing()
+    protected override async void OnDisappearing()
     {
         base.OnDisappearing();
-        _ = _viewModel.SaveStateAndSuspendAsync();
+        try
+        {
+            await _viewModel.SaveStateAndSuspendAsync();
+        }
+        catch (System.Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Gallery OnDisappearing Error]: {ex}");
+        }
     }
 
     private void OnGalleryScrolled(object sender, ItemsViewScrolledEventArgs e)
@@ -34,10 +48,17 @@ public partial class CollectionGalleryPage : ContentPage
 
     private async void OnImageSelected(object sender, SelectionChangedEventArgs e)
     {
-        if (e.CurrentSelection.FirstOrDefault() is not GalleryImageItem item)
-            return;
+        try
+        {
+            if (e.CurrentSelection.FirstOrDefault() is not GalleryImageItem item)
+                return;
 
-        GalleryView.SelectedItem = null;
-        await _viewModel.EditImageAsync(item);
+            GalleryView.SelectedItem = null;
+            await _viewModel.EditImageAsync(item);
+        }
+        catch (System.Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Gallery ImageSelected Error]: {ex}");
+        }
     }
 }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Screen_Painter.Models;
 
@@ -61,7 +62,7 @@ public class LocalStorageProvider : IStorageProvider
         return rawPath;
     }
 
-    public async Task<List<string>> ListImageIdentifiersAsync(FolderSource folderSource)
+    public async Task<List<string>> ListImageIdentifiersAsync(FolderSource folderSource, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(folderSource.PathOrUrl))
             return new List<string>();
@@ -77,7 +78,7 @@ public class LocalStorageProvider : IStorageProvider
             {
                 try
                 {
-                    var files = SafeEnumerateFilesRecursive(normalizedPath);
+                    var files = SafeEnumerateFilesRecursive(normalizedPath, ct);
                     result.AddRange(files);
                 }
                 catch
@@ -88,7 +89,7 @@ public class LocalStorageProvider : IStorageProvider
 
             // Method 2: Android MediaStore / ContentResolver Query Fallback
 #if ANDROID
-            if (!result.Any())
+            if (!result.Any() && !ct.IsCancellationRequested)
             {
                 try
                 {
@@ -102,7 +103,7 @@ public class LocalStorageProvider : IStorageProvider
 #endif
 
             return result;
-        });
+        }, ct);
     }
 
 #if ANDROID
@@ -154,7 +155,7 @@ public class LocalStorageProvider : IStorageProvider
     }
 #endif
 
-    private static List<string> SafeEnumerateFilesRecursive(string rootDir)
+    private static List<string> SafeEnumerateFilesRecursive(string rootDir, CancellationToken ct = default)
     {
         var result = new List<string>();
         var stack = new Stack<string>();
@@ -162,6 +163,9 @@ public class LocalStorageProvider : IStorageProvider
 
         while (stack.Count > 0)
         {
+            if (ct.IsCancellationRequested)
+                break;
+
             var currentDir = stack.Pop();
             try
             {
