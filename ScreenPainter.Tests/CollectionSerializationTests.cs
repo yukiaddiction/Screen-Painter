@@ -15,6 +15,7 @@ public class CollectionSerializationTests
         Target = TargetScreen.Lock,
         IsTimerEnabled = true,
         IsScreenAwakeEnabled = true,
+        OnVisibleMode = OnVisibleMode.Reveal,
         TriggersMigrated = true,
         TimerIntervalMinutes = 30,
         IsScheduleEnabled = true,
@@ -42,6 +43,7 @@ public class CollectionSerializationTests
         Assert.Equal(original.Target, restored.Target);
         Assert.Equal(original.IsTimerEnabled, restored.IsTimerEnabled);
         Assert.Equal(original.IsScreenAwakeEnabled, restored.IsScreenAwakeEnabled);
+        Assert.Equal(original.OnVisibleMode, restored.OnVisibleMode);
         Assert.Equal(original.TriggersMigrated, restored.TriggersMigrated);
         Assert.Equal(original.TimerIntervalMinutes, restored.TimerIntervalMinutes);
         Assert.Equal(original.IsScheduleEnabled, restored.IsScheduleEnabled);
@@ -90,6 +92,7 @@ public class CollectionSerializationTests
         // Before migration the new flags default to false.
         Assert.False(restored!.IsTimerEnabled);
         Assert.False(restored.IsScreenAwakeEnabled);
+        Assert.Equal(OnVisibleMode.None, restored.OnVisibleMode);
         Assert.False(restored.TriggersMigrated);
 
         restored.MigrateTriggerIfNeeded();

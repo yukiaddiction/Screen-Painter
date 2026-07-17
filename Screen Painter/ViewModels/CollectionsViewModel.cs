@@ -111,6 +111,7 @@ public class CollectionsViewModel : BaseViewModel
 
             await EnsureBatteryOptimizationExemptionAsync();
             await EnsureExactAlarmPermissionAsync();
+            await EnsureUsageStatsPermissionAsync();
         }
         catch (Exception ex)
         {
@@ -202,6 +203,55 @@ public class CollectionsViewModel : BaseViewModel
         catch (Exception ex)
         {
             Debug.WriteLine($"[Exact Alarm Prompt Error]: {ex.Message}");
+        }
+#else
+        await Task.CompletedTask;
+#endif
+    }
+
+    private async Task EnsureUsageStatsPermissionAsync()
+    {
+#if ANDROID
+        try
+        {
+            if (!OperatingSystem.IsAndroidVersionAtLeast(21))
+                return;
+
+            var context = global::Android.App.Application.Context;
+            var appOps = (global::Android.App.AppOpsManager?)context.GetSystemService(global::Android.Content.Context.AppOpsService);
+            if (appOps == null) return;
+
+            var mode = appOps.CheckOpNoThrow(
+                global::Android.App.AppOpsManager.OpstrGetUsageStats,
+                global::Android.OS.Process.MyUid(),
+                context.PackageName ?? string.Empty);
+
+            if (mode == global::Android.App.AppOpsManagerMode.Allowed)
+                return;
+
+            bool answer = await ShellHelper.DisplayAlert(
+                "Usage Access Required",
+                "To detect when you return to the home screen for OnVisible wallpaper rotation, Screen Painter needs Usage Access permission. Please enable it on the next screen.",
+                "Open Settings",
+                "Later");
+
+            if (!answer)
+                return;
+
+            try
+            {
+                var intent = new global::Android.Content.Intent(global::Android.Provider.Settings.ActionUsageAccessSettings);
+                intent.AddFlags(global::Android.Content.ActivityFlags.NewTask);
+                context.StartActivity(intent);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[UsageStats Permission Error]: {ex.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[UsageStats Permission Error]: {ex.Message}");
         }
 #else
         await Task.CompletedTask;

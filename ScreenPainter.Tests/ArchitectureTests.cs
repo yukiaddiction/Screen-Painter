@@ -21,9 +21,10 @@ public class ArchitectureTests
     {
         // Enum values are persisted as integers in collections.json — reordering or removing
         // members would silently corrupt saved data.
-        Assert.Equal(new[] { "Timer", "ScreenAwake" }, Enum.GetNames(typeof(TriggerType)));
+        Assert.Equal(new[] { "Timer", "ScreenAwake", "OnVisible" }, Enum.GetNames(typeof(TriggerType)));
         Assert.Equal(0, (int)TriggerType.Timer);
         Assert.Equal(1, (int)TriggerType.ScreenAwake);
+        Assert.Equal(2, (int)TriggerType.OnVisible);
     }
 
     [Fact]

@@ -3,7 +3,15 @@ namespace Screen_Painter.Models;
 public enum TriggerType
 {
     Timer,
-    ScreenAwake
+    ScreenAwake,
+    OnVisible
+}
+
+public enum OnVisibleMode
+{
+    None,
+    Reveal,
+    Hide
 }
 
 public enum StorageType

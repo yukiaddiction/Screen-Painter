@@ -13,6 +13,7 @@ public class TriggerMigrationTests
 
         Assert.True(collection.IsTimerEnabled);
         Assert.False(collection.IsScreenAwakeEnabled);
+        Assert.Equal(OnVisibleMode.None, collection.OnVisibleMode);
         Assert.True(collection.TriggersMigrated);
     }
 
@@ -25,6 +26,20 @@ public class TriggerMigrationTests
 
         Assert.False(collection.IsTimerEnabled);
         Assert.True(collection.IsScreenAwakeEnabled);
+        Assert.Equal(OnVisibleMode.None, collection.OnVisibleMode);
+        Assert.True(collection.TriggersMigrated);
+    }
+
+    [Fact]
+    public void Migrate_LegacyOnVisible_EnablesReveal()
+    {
+        var collection = new WallpaperCollection { Trigger = TriggerType.OnVisible };
+
+        collection.MigrateTriggerIfNeeded();
+
+        Assert.False(collection.IsTimerEnabled);
+        Assert.False(collection.IsScreenAwakeEnabled);
+        Assert.Equal(OnVisibleMode.Reveal, collection.OnVisibleMode);
         Assert.True(collection.TriggersMigrated);
     }
 
@@ -35,13 +50,15 @@ public class TriggerMigrationTests
         {
             Trigger = TriggerType.Timer,
             IsTimerEnabled = true,
-            IsScreenAwakeEnabled = true
+            IsScreenAwakeEnabled = true,
+            OnVisibleMode = OnVisibleMode.Reveal
         };
 
         collection.MigrateTriggerIfNeeded();
 
         Assert.True(collection.IsTimerEnabled);
         Assert.True(collection.IsScreenAwakeEnabled);
+        Assert.Equal(OnVisibleMode.Reveal, collection.OnVisibleMode);
     }
 
     [Fact]

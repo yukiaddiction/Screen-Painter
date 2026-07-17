@@ -47,6 +47,8 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
             {
                 OnPropertyChanged(nameof(IsTimerEnabled));
                 OnPropertyChanged(nameof(IsScreenAwakeEnabled));
+                OnPropertyChanged(nameof(IsOnRevealEnabled));
+                OnPropertyChanged(nameof(IsOnHideEnabled));
                 OnPropertyChanged(nameof(IsTimerVisible));
             }
         }
@@ -101,6 +103,46 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
             {
                 CurrentCollection.IsScreenAwakeEnabled = value;
                 OnPropertyChanged();
+            }
+        }
+    }
+
+    public bool IsOnRevealEnabled
+    {
+        get => CurrentCollection.OnVisibleMode == OnVisibleMode.Reveal;
+        set
+        {
+            if (value)
+            {
+                CurrentCollection.OnVisibleMode = OnVisibleMode.Reveal;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsOnHideEnabled));
+            }
+            else
+            {
+                CurrentCollection.OnVisibleMode = OnVisibleMode.None;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsOnHideEnabled));
+            }
+        }
+    }
+
+    public bool IsOnHideEnabled
+    {
+        get => CurrentCollection.OnVisibleMode == OnVisibleMode.Hide;
+        set
+        {
+            if (value)
+            {
+                CurrentCollection.OnVisibleMode = OnVisibleMode.Hide;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsOnRevealEnabled));
+            }
+            else
+            {
+                CurrentCollection.OnVisibleMode = OnVisibleMode.None;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsOnRevealEnabled));
             }
         }
     }
@@ -245,6 +287,7 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
                 Target = TargetScreen.Both,
                 IsTimerEnabled = true,
                 IsScreenAwakeEnabled = false,
+                OnVisibleMode = OnVisibleMode.None,
                 TriggersMigrated = true,
                 TimerIntervalMinutes = 15,
                 IsScheduleEnabled = false,
@@ -261,6 +304,8 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
         RefreshDayProperties();
         OnPropertyChanged(nameof(IsTimerEnabled));
         OnPropertyChanged(nameof(IsScreenAwakeEnabled));
+        OnPropertyChanged(nameof(IsOnRevealEnabled));
+        OnPropertyChanged(nameof(IsOnHideEnabled));
         OnPropertyChanged(nameof(IsTimerVisible));
     }
 
@@ -292,11 +337,11 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
 
     private async Task SaveAsync()
     {
-        if (!CurrentCollection.IsTimerEnabled && !CurrentCollection.IsScreenAwakeEnabled)
+        if (!CurrentCollection.IsTimerEnabled && !CurrentCollection.IsScreenAwakeEnabled && CurrentCollection.OnVisibleMode == OnVisibleMode.None)
         {
             await ShellHelper.DisplayAlert(
                 "Enable a Trigger",
-                "Enable at least one trigger: Timer and/or Screen Wake.",
+                "Enable at least one trigger: Timer, Screen Wake, or On Reveal / On Hide.",
                 "OK");
             return;
         }

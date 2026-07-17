@@ -43,6 +43,10 @@ public class WallpaperCollection : INotifyPropertyChanged
     public bool IsScreenAwakeEnabled { get => _isScreenAwakeEnabled; set { if (_isScreenAwakeEnabled != value) { _isScreenAwakeEnabled = value; OnPropertyChanged(); } } }
     private bool _isScreenAwakeEnabled;
 
+    [JsonPropertyName("onVisibleMode")]
+    public OnVisibleMode OnVisibleMode { get => _onVisibleMode; set { if (_onVisibleMode != value) { _onVisibleMode = value; OnPropertyChanged(); } } }
+    private OnVisibleMode _onVisibleMode = OnVisibleMode.None;
+
     [JsonPropertyName("triggersMigrated")]
     public bool TriggersMigrated { get => _triggersMigrated; set { if (_triggersMigrated != value) { _triggersMigrated = value; OnPropertyChanged(); } } }
     private bool _triggersMigrated;
@@ -52,10 +56,12 @@ public class WallpaperCollection : INotifyPropertyChanged
         if (_triggersMigrated)
             return;
 
-        if (!_isTimerEnabled && !_isScreenAwakeEnabled)
+        if (!_isTimerEnabled && !_isScreenAwakeEnabled && _onVisibleMode == OnVisibleMode.None)
         {
             if (_trigger == TriggerType.ScreenAwake)
                 _isScreenAwakeEnabled = true;
+            else if (_trigger == TriggerType.OnVisible)
+                _onVisibleMode = OnVisibleMode.Reveal;
             else
                 _isTimerEnabled = true;
         }

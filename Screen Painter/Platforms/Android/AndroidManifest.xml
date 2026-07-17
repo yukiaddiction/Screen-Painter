@@ -20,6 +20,7 @@
 
 	<!-- System & Network Permissions -->
 	<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+	<uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
 
 	<!-- Exact alarm permissions: required so the watchdog alarm can restart the -->
 	<!-- foreground service from the background on Android 12+ (API 31+). -->

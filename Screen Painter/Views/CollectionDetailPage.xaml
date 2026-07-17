@@ -63,6 +63,25 @@
                         </VerticalStackLayout>
                         <Switch Grid.Column="1" IsToggled="{Binding IsScreenAwakeEnabled}" Style="{StaticResource ThemedSwitch}" VerticalOptions="Center" />
                     </Grid>
+
+                    <!-- On Visible: Reveal / Hide -->
+                    <Grid ColumnDefinitions="*, Auto" Margin="{StaticResource InstructionMargin}">
+                        <VerticalStackLayout Grid.Column="0" Spacing="{StaticResource MicroSpacing}">
+                            <Label Text="Rotate On Reveal" Style="{StaticResource BodyBoldLabel}" 
+                                   TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" />
+                            <Label Text="Change wallpaper when it becomes visible (unlock + return home)" Style="{StaticResource SmallCaptionLabel}" />
+                        </VerticalStackLayout>
+                        <Switch Grid.Column="1" IsToggled="{Binding IsOnRevealEnabled}" Style="{StaticResource ThemedSwitch}" VerticalOptions="Center" />
+                    </Grid>
+
+                    <Grid ColumnDefinitions="*, Auto" Margin="{StaticResource InstructionMargin}">
+                        <VerticalStackLayout Grid.Column="0" Spacing="{StaticResource MicroSpacing}">
+                            <Label Text="Rotate On Hide" Style="{StaticResource BodyBoldLabel}" 
+                                   TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" />
+                            <Label Text="Change wallpaper the moment it gets hidden (opening any app from home)" Style="{StaticResource SmallCaptionLabel}" />
+                        </VerticalStackLayout>
+                        <Switch Grid.Column="1" IsToggled="{Binding IsOnHideEnabled}" Style="{StaticResource ThemedSwitch}" VerticalOptions="Center" />
+                    </Grid>
                 </VerticalStackLayout>
             </Border>
 
