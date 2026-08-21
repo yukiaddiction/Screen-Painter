@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
@@ -19,6 +20,7 @@ public class GalleryManifestStore : IGalleryManifestStore
 {
     private readonly ILogger<GalleryManifestStore> _logger;
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = false };
+    private readonly SemaphoreSlim _writeLock = new(1, 1);
 
     public GalleryManifestStore(ILogger<GalleryManifestStore> logger)
     {
@@ -49,7 +51,6 @@ public class GalleryManifestStore : IGalleryManifestStore
             return null;
         }
     }
-
     public bool IsFresh(GalleryManifest manifest)
     {
         var age = DateTime.UtcNow - manifest.SavedUtc;
@@ -58,15 +59,25 @@ public class GalleryManifestStore : IGalleryManifestStore
 
     public async Task SaveAsync(string collectionId, GalleryManifest manifest)
     {
+        await _writeLock.WaitAsync().ConfigureAwait(false);
         try
         {
             var path = GetManifestPath(collectionId);
             var json = JsonSerializer.Serialize(manifest, JsonOptions);
-            await File.WriteAllTextAsync(path, json).ConfigureAwait(false);
+
+            // Atomic write: write to a temp file then replace, so a crash or power
+            // loss mid-write can never corrupt the existing manifest.
+            var tmpPath = path + ".tmp";
+            await File.WriteAllTextAsync(tmpPath, json).ConfigureAwait(false);
+            File.Move(tmpPath, path, overwrite: true);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to save gallery manifest for {Id}", collectionId);
+        }
+        finally
+        {
+            _writeLock.Release();
         }
     }
 

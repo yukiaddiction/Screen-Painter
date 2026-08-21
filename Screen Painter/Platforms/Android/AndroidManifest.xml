@@ -24,14 +24,15 @@
 
 	<!-- Exact alarm permissions: required so the watchdog alarm can restart the -->
 	<!-- foreground service from the background on Android 12+ (API 31+). -->
+	<!-- Only SCHEDULE_EXACT_ALARM is declared; USE_EXACT_ALARM is restricted to -->
+	<!-- alarm/calendar/clock apps by Play policy and would risk review rejection. -->
 	<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-	<uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 	<uses-permission android:name="android.permission.INTERNET" />
 	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 	<uses-permission android:name="android.permission.WAKE_LOCK" />
 	<uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
-	<application android:allowBackup="false" android:icon="@mipmap/appicon" android:roundIcon="@mipmap/appicon_round" android:supportsRtl="true" android:enableOnBackInvokedCallback="false" android:usesCleartextTraffic="true">
+	<application android:allowBackup="false" android:icon="@mipmap/appicon" android:roundIcon="@mipmap/appicon_round" android:supportsRtl="true" android:enableOnBackInvokedCallback="false">
 		<!-- specialUse FGS type: exempt from the 6h/day dataSync timeout on Android 14/15. -->
 		<!-- The subtype property declares the reason for Play Store review. -->
 		<service 

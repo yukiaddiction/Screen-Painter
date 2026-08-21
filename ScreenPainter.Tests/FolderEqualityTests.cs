@@ -73,4 +73,50 @@ public class FolderEqualityTests
 
         Assert.NotEqual(a, b);
     }
+
+    [Fact]
+    public void FolderSource_MixedCaseIds_HaveSameHashCode()
+    {
+        // Equals is OrdinalIgnoreCase; GetHashCode must agree or HashSet/Dictionary
+        // break the equality contract (two Equal items would hash differently).
+        var a = new FolderSource { Id = "ABC" };
+        var b = new FolderSource { Id = "abc" };
+
+        Assert.Equal(a, b);
+        Assert.Equal(a.GetHashCode(), b.GetHashCode());
+    }
+
+    [Fact]
+    public void FolderSource_HashSet_DedupesMixedCaseIds()
+    {
+        var set = new HashSet<FolderSource>
+        {
+            new() { Id = "DUP" },
+            new() { Id = "dup" }
+        };
+
+        Assert.Single(set);
+    }
+
+    [Fact]
+    public void CloudAccount_MixedCaseIds_HaveSameHashCode()
+    {
+        var a = new CloudAccount { Id = "ACCT-1" };
+        var b = new CloudAccount { Id = "acct-1" };
+
+        Assert.Equal(a, b);
+        Assert.Equal(a.GetHashCode(), b.GetHashCode());
+    }
+
+    [Fact]
+    public void CloudAccount_HashSet_DedupesMixedCaseIds()
+    {
+        var set = new HashSet<CloudAccount>
+        {
+            new() { Id = "ACCT-2" },
+            new() { Id = "acct-2" }
+        };
+
+        Assert.Single(set);
+    }
 }

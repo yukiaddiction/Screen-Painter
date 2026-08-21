@@ -119,4 +119,43 @@ public class RotationGateTests
         Assert.True(gate.TryGetLastRotated("c", out var stamp));
         Assert.Equal(now, stamp);
     }
+
+    [Fact]
+    public void PruneToValidIds_RemovesDeletedCollections()
+    {
+        var gate = new RotationGate();
+        var now = new DateTime(2026, 1, 1, 12, 0, 0);
+        gate.MarkRotated("existing", now);
+        gate.MarkRotated("deleted", now);
+
+        gate.PruneToValidIds(new[] { "existing" });
+
+        Assert.True(gate.TryGetLastRotated("existing", out _));
+        Assert.False(gate.TryGetLastRotated("deleted", out _));
+    }
+
+    [Fact]
+    public void PruneToValidIds_CaseInsensitive_KeepsValid()
+    {
+        var gate = new RotationGate();
+        var now = new DateTime(2026, 1, 1, 12, 0, 0);
+        gate.MarkRotated("ABC", now);
+
+        gate.PruneToValidIds(new[] { "abc" });
+
+        Assert.True(gate.TryGetLastRotated("ABC", out _));
+    }
+
+    [Fact]
+    public void PruneToValidIds_AllValid_KeepsEverything()
+    {
+        var gate = new RotationGate();
+        var now = new DateTime(2026, 1, 1, 12, 0, 0);
+        gate.MarkRotated("a", now);
+        gate.MarkRotated("b", now);
+
+        gate.PruneToValidIds(new[] { "a", "b" });
+
+        Assert.Equal(2, gate.Count);
+    }
 }

@@ -30,5 +30,5 @@ public class FolderSource : CredentialedEntity, IEquatable<FolderSource>
 
     public override bool Equals(object? obj) => obj is FolderSource source && Equals(source);
 
-    public override int GetHashCode() => Id.GetHashCode();
+    public override int GetHashCode() => StringComparer.OrdinalIgnoreCase.GetHashCode(Id);
 }

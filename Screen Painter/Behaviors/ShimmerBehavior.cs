@@ -9,22 +9,28 @@ public class ShimmerBehavior : Behavior<VisualElement>
     private const uint SweepDurationMs = 1200;
 
     private VisualElement? _element;
+    private VisualElement? _attachedParent;
 
     protected override void OnAttachedTo(VisualElement bindable)
     {
         base.OnAttachedTo(bindable);
         _element = bindable;
         bindable.SizeChanged += OnSizeChanged;
-        if (bindable.Parent is VisualElement parent)
-            parent.SizeChanged += OnSizeChanged;
+        _attachedParent = bindable.Parent as VisualElement;
+        if (_attachedParent != null)
+            _attachedParent.SizeChanged += OnSizeChanged;
         StartSweep();
     }
 
     protected override void OnDetachingFrom(VisualElement bindable)
     {
         bindable.SizeChanged -= OnSizeChanged;
-        if (bindable.Parent is VisualElement parent)
-            parent.SizeChanged -= OnSizeChanged;
+        // Unsubscribe from the exact parent instance we subscribed to at attach time.
+        // Subscribing to whatever parent is present at detach time leaks the original
+        // parent's subscription if the element was reparented in between.
+        if (_attachedParent != null)
+            _attachedParent.SizeChanged -= OnSizeChanged;
+        _attachedParent = null;
         bindable.AbortAnimation(AnimationName);
         _element = null;
         base.OnDetachingFrom(bindable);
@@ -35,11 +41,11 @@ public class ShimmerBehavior : Behavior<VisualElement>
     private void StartSweep()
     {
         var element = _element;
-        if (element is null)
+        if (element is null || !element.IsVisible)
             return;
 
         double stripeWidth = element.Width;
-        double containerWidth = (element.Parent as VisualElement)?.Width ?? 0;
+        double containerWidth = (_attachedParent ?? element.Parent as VisualElement)?.Width ?? 0;
 
         if (double.IsNaN(stripeWidth) || stripeWidth <= 0 ||
             double.IsNaN(containerWidth) || containerWidth <= 0)
@@ -61,6 +67,6 @@ public class ShimmerBehavior : Behavior<VisualElement>
             AnimationName,
             length: SweepDurationMs,
             easing: Easing.SinInOut,
-            repeat: () => true);
+            repeat: () => element.IsVisible);
     }
 }

@@ -34,14 +34,16 @@ public class WallpaperForegroundService : Service
     private HomeKeyReceiver? _homeKeyReceiver;
     private CancellationTokenSource? _timerCts;
     private int _evaluationInProgress;
+    private int _startReinitInProgress;
     private int _screenEventInProgress;
     private int _evaluationSkipCount;
     private DateTime _lastEvaluationSkipLog = DateTime.MinValue;
     private DateTime _lastNoActiveCollectionsLog = DateTime.MinValue;
     private DateTime _lastIntervalWaitingLog = DateTime.MinValue;
-    private bool _onHomeScreen;
+    private volatile bool _onHomeScreen;
     private HashSet<string>? _launcherPackages;
     private int _onVisibleCheckInProgress;
+    private volatile bool _lastKnownActive = true;
     private static WallpaperForegroundService? _instance;
     public static readonly Screen_Painter.Services.Scheduling.RotationGate Gate = new();
 
@@ -89,23 +91,40 @@ public class WallpaperForegroundService : Service
             return StartCommandResult.Sticky;
         }
 
-        if (_timerCts != null && !_timerCts.IsCancellationRequested)
+        // Serialize reinitialization so two rapid OnStartCommand calls (e.g. alarm +
+        // boot receiver) cannot both pass the _timerCts check and spin up two polling
+        // loops. Only one caller wins the exchange; the loser returns immediately.
+        if (Interlocked.Exchange(ref _startReinitInProgress, 1) == 1)
         {
-            GetLogger().LogDebug("Foreground service already running — skipping reinit");
+            GetLogger().LogDebug("Foreground service start already in progress — skipping reinit");
             AlarmReceiver.Schedule(this);
             return StartCommandResult.Sticky;
         }
 
-        GetLogger().LogInformation("Foreground service started");
+        try
+        {
+            if (_timerCts != null && !_timerCts.IsCancellationRequested)
+            {
+                GetLogger().LogDebug("Foreground service already running — skipping reinit");
+                AlarmReceiver.Schedule(this);
+                return StartCommandResult.Sticky;
+            }
 
-        _timerCts?.Cancel();
-        _timerCts?.Dispose();
-        _timerCts = new CancellationTokenSource();
-        _ = RunBackgroundTimerLoopAsync(_timerCts.Token);
+            GetLogger().LogInformation("Foreground service started");
 
-        AlarmReceiver.Schedule(this);
+            _timerCts?.Cancel();
+            _timerCts?.Dispose();
+            _timerCts = new CancellationTokenSource();
+            _ = RunBackgroundTimerLoopAsync(_timerCts.Token);
 
-        return StartCommandResult.Sticky;
+            AlarmReceiver.Schedule(this);
+
+            return StartCommandResult.Sticky;
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _startReinitInProgress, 0);
+        }
     }
 
     /// <summary>
@@ -157,6 +176,28 @@ public class WallpaperForegroundService : Service
         int tickCount = 0;
         while (!token.IsCancellationRequested)
         {
+            // Determine what the service actually needs to do this cycle. When no
+            // collection is enabled, stop the service and let the watchdog alarm
+            // re-check later instead of polling every few seconds 24/7.
+            var plan = await GetPollingPlanAsync();
+            if (plan is { HasEnabled: false })
+            {
+                GetLogger().LogInformation("No enabled collections — stopping foreground service; watchdog will restart when enabled");
+                StopSelf();
+                return;
+            }
+
+            // Adaptive cadence: timer collections want a responsive poll, OnVisible
+            // wants a moderately frequent UsageStats check, and screen-awake-only
+            // collections are driven by broadcast receivers so they can poll slowly.
+            int delaySeconds = plan switch
+            {
+                null => AppConstants.ForegroundServicePollingIntervalSeconds / 2,
+                _ when plan.HasTimer => AppConstants.ForegroundServicePollingIntervalSeconds / 2,
+                _ when plan.HasOnVisible => 15,
+                _ => 30
+            };
+
             try
             {
                 await EvaluateTimerRotationsAsync();
@@ -178,7 +219,7 @@ public class WallpaperForegroundService : Service
 
             try
             {
-                await Task.Delay(TimeSpan.FromSeconds(AppConstants.ForegroundServicePollingIntervalSeconds / 2), token);
+                await Task.Delay(TimeSpan.FromSeconds(delaySeconds), token);
             }
             catch (TaskCanceledException)
             {
@@ -196,7 +237,7 @@ public class WallpaperForegroundService : Service
 
             try
             {
-                await Task.Delay(TimeSpan.FromSeconds(AppConstants.ForegroundServicePollingIntervalSeconds / 2), token);
+                await Task.Delay(TimeSpan.FromSeconds(delaySeconds), token);
             }
             catch (TaskCanceledException)
             {
@@ -207,11 +248,39 @@ public class WallpaperForegroundService : Service
             if (tickCount % 60 == 0)
             {
                 GetLogger().LogInformation("Polling heartbeat — {Minutes} minutes elapsed, {Rotations} total rotations",
-                    tickCount * AppConstants.ForegroundServicePollingIntervalSeconds / 60,
+                    tickCount * delaySeconds / 60,
                     Gate.Count);
             }
         }
     }
+
+    private async Task<PollingPlan?> GetPollingPlanAsync()
+    {
+        var scheduler = ServiceAccessor.GetService<ICollectionScheduler>();
+        if (scheduler == null)
+            return null;
+
+        try
+        {
+            var collections = await scheduler.GetAllCollectionsAsync();
+            var hasEnabled = collections.Any(c => c.IsEnabled);
+
+            // Bound the rotation-gate dictionary to collections that still exist.
+            Gate.PruneToValidIds(collections.Select(c => c.Id));
+
+            _lastKnownActive = hasEnabled;
+            return new PollingPlan(
+                HasEnabled: hasEnabled,
+                HasTimer: collections.Any(c => c.IsEnabled && c.IsTimerEnabled),
+                HasOnVisible: collections.Any(c => c.IsEnabled && c.OnVisibleMode != OnVisibleMode.None));
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private sealed record PollingPlan(bool HasEnabled, bool HasTimer, bool HasOnVisible);
 
     private async Task EvaluateTimerRotationsAsync()
     {
@@ -626,6 +695,17 @@ public class WallpaperForegroundService : Service
             _onHomeScreen = false;
 
         var log = GetLogger();
+
+        // Only hold a wake lock when there is actually rotation work to do. When no
+        // collection is enabled the flag is false and we skip both the wake lock and
+        // the background task entirely.
+        if (!_lastKnownActive)
+        {
+            log.LogDebug("Screen event ignored — no enabled collections");
+            Interlocked.Exchange(ref _screenEventInProgress, 0);
+            return;
+        }
+
         var wakeLock = AcquireScreenEventWakeLock(log);
 
         _ = Task.Run(async () =>

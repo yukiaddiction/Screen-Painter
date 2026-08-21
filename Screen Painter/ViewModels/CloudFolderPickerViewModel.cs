@@ -63,9 +63,9 @@ public class CloudFolderPickerViewModel : BaseViewModel, IQueryAttributable
         Title = "Browse Cloud Directory";
 
         SelectFolderCommand = new Command(SelectFolder);
-        OpenSubfolderCommand = new Command<string>(async (path) => await OpenSubfolderAsync(path));
-        NavigateUpCommand = new Command(async () => await NavigateUpAsync());
-        TestConnectionCommand = new Command(async () => await RunDiagnosticsAsync());
+        OpenSubfolderCommand = new AsyncCommand<string>(async (path) => await OpenSubfolderAsync(path));
+        NavigateUpCommand = new AsyncCommand(async () => await NavigateUpAsync());
+        TestConnectionCommand = new AsyncCommand(async () => await RunDiagnosticsAsync());
     }
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)

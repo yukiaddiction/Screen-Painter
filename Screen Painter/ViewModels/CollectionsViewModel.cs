@@ -59,18 +59,24 @@ public class CollectionsViewModel : BaseViewModel
         _logger = logger;
         Title = "Wallpaper Collections";
 
-        LoadCollectionsCommand = new Command(async () => await LoadCollectionsAsync());
-        AddCollectionCommand = new Command(async () => await AddCollectionAsync());
-        ToggleCollectionCommand = new Command<WallpaperCollection>(async (c) => await ToggleCollectionAsync(c));
-        DeleteCollectionCommand = new Command<WallpaperCollection>(async (c) => await DeleteCollectionAsync(c));
-        ApplyNowCommand = new Command<WallpaperCollection>(async (c) => await ApplyNowAsync(c));
-        OpenGalleryCommand = new Command<WallpaperCollection>(async (c) => await OpenGalleryAsync(c));
+        LoadCollectionsCommand = new AsyncCommand(async () => await LoadCollectionsAsync());
+        AddCollectionCommand = new AsyncCommand(async () => await AddCollectionAsync());
+        ToggleCollectionCommand = new AsyncCommand<WallpaperCollection>(async (c) => await ToggleCollectionAsync(c));
+        DeleteCollectionCommand = new AsyncCommand<WallpaperCollection>(async (c) => await DeleteCollectionAsync(c));
+        ApplyNowCommand = new AsyncCommand<WallpaperCollection>(async (c) => await ApplyNowAsync(c));
+        OpenGalleryCommand = new AsyncCommand<WallpaperCollection>(async (c) => await OpenGalleryAsync(c));
     }
 
     public async Task EnsureRequiredPermissionsAsync()
     {
         try
         {
+            // Once the user has been walked through the permission prompts in this
+            // session, don't re-prompt on every page appear. Permission state itself
+            // (granted/denied) is still re-read each time.
+            if (_permissionsPrompted)
+                return;
+
             var status = await Permissions.CheckStatusAsync<Permissions.StorageRead>();
             if (status != PermissionStatus.Granted)
             {
@@ -112,12 +118,16 @@ public class CollectionsViewModel : BaseViewModel
             await EnsureBatteryOptimizationExemptionAsync();
             await EnsureExactAlarmPermissionAsync();
             await EnsureUsageStatsPermissionAsync();
+
+            _permissionsPrompted = true;
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"[ScreenPainter Permission Error]: {ex.Message}");
         }
     }
+
+    private bool _permissionsPrompted;
 
     private async Task EnsureBatteryOptimizationExemptionAsync()
     {

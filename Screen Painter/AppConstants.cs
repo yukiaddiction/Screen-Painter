@@ -50,4 +50,8 @@ public static class AppConstants
     // App
     public static string DefaultAppTheme => _settings.App.DefaultTheme;
     public static int PromptMaxLength => _settings.App.PromptMaxLength;
+    public const string AppThemePreferenceKey = "AppTheme";
+    public const string DarkThemeValue = "Dark";
+    public const string LightThemeValue = "Light";
+    public const string AutoUpdateCheckPreferenceKey = "AutoUpdateCheck";
 }

@@ -10,14 +10,16 @@ using System.Linq;
 namespace Screen_Painter.Platforms.Android;
 
 [BroadcastReceiver(Enabled = true, Exported = true, DirectBootAware = true)]
-[IntentFilter(new[] { Intent.ActionBootCompleted, "android.intent.action.QUICKBOOT_POWERON" })]
+[IntentFilter(new[] { Intent.ActionBootCompleted, "android.intent.action.QUICKBOOT_POWERON", "android.intent.action.LOCKED_BOOT_COMPLETED" })]
 public class BootReceiver : BroadcastReceiver
 {
     public override void OnReceive(Context? context, Intent? intent)
     {
         if (context == null || intent == null) return;
 
-        if (intent.Action == Intent.ActionBootCompleted || intent.Action == "android.intent.action.QUICKBOOT_POWERON")
+        if (intent.Action == Intent.ActionBootCompleted ||
+            intent.Action == "android.intent.action.QUICKBOOT_POWERON" ||
+            intent.Action == "android.intent.action.LOCKED_BOOT_COMPLETED")
         {
             var pendingResult = GoAsync();
             _ = System.Threading.Tasks.Task.Run(async () =>
@@ -25,17 +27,35 @@ public class BootReceiver : BroadcastReceiver
                 var log = GetLogger();
                 try
                 {
-                    log.LogInformation("Boot completed — checking for enabled collections");
+                    log.LogInformation("Boot completed ({Action}) — checking for enabled collections", intent.Action);
 
                     var scheduler = ServiceAccessor.GetService<ICollectionScheduler>();
-                    if (scheduler == null) return;
+                    bool startService = false;
 
-                    var collections = await scheduler.GetAllCollectionsAsync();
-                    if (collections.Any(c => c.IsEnabled))
+                    if (scheduler != null)
                     {
-                        log.LogInformation("Starting foreground service after boot — {Count} enabled collections",
-                            collections.Count(c => c.IsEnabled));
+                        try
+                        {
+                            // Before the first unlock, credential-encrypted app storage
+                            // is NOT accessible on DirectBootAware receivers. A read
+                            // failure returns an empty list; in that case arm the
+                            // watchdog alarm so the service starts after unlock instead
+                            // of dying silently.
+                            var collections = await scheduler.GetAllCollectionsAsync();
+                            startService = collections.Any(c => c.IsEnabled);
+                            if (!startService)
+                                log.LogInformation("Boot — no enabled collections, skipping service start");
+                        }
+                        catch (System.Exception ex)
+                        {
+                            log.LogWarning(ex, "Boot — storage not yet accessible (pre-unlock); arming watchdog instead");
+                            startService = false;
+                        }
+                    }
 
+                    if (startService)
+                    {
+                        log.LogInformation("Starting foreground service after boot");
                         var serviceIntent = new Intent(context, typeof(WallpaperForegroundService));
                         try
                         {
@@ -51,11 +71,14 @@ public class BootReceiver : BroadcastReceiver
                         catch (System.Exception startEx)
                         {
                             log.LogWarning(startEx, "BootReceiver could not start foreground service (background start restriction)");
+                            AlarmReceiver.Schedule(context);
                         }
                     }
                     else
                     {
-                        log.LogInformation("Boot — no enabled collections, skipping service start");
+                        // Either nothing is enabled yet or we cannot read storage yet.
+                        // Arm the watchdog alarm so the chain survives pre-unlock boots.
+                        AlarmReceiver.Schedule(context);
                     }
                 }
                 catch (System.Exception ex)

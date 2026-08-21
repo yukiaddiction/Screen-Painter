@@ -41,7 +41,7 @@ public partial class CollectionsPage : ContentPage
     {
         try
         {
-            if (!Microsoft.Maui.Storage.Preferences.Default.Get("AutoUpdateCheck", true))
+            if (!Microsoft.Maui.Storage.Preferences.Default.Get(AppConstants.AutoUpdateCheckPreferenceKey, true))
                 return;
 
             var updateService = ServiceAccessor.GetService<IUpdateCheckService>();

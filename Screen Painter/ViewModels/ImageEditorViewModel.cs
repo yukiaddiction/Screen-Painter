@@ -344,9 +344,9 @@ public class ImageEditorViewModel : BaseViewModel, IQueryAttributable
         PreviewFrameWidth = frameWidth;
         PreviewFrameHeight = frameHeight;
 
-        SaveFramingCommand = new Command(async () => await SaveFramingAsync());
+        SaveFramingCommand = new AsyncCommand(async () => await SaveFramingAsync());
         ResetFramingCommand = new Command(ResetFraming);
-        RemoveOverrideCommand = new Command(async () => await RemoveOverrideAsync());
+        RemoveOverrideCommand = new AsyncCommand(async () => await RemoveOverrideAsync());
     }
 
     private static string DecodeQueryValue(string value)

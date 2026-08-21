@@ -47,7 +47,8 @@ public class WebDavStorageProvider : IStorageProvider
         using var reader = System.Xml.XmlReader.Create(new StringReader(xml), new System.Xml.XmlReaderSettings
         {
             DtdProcessing = System.Xml.DtdProcessing.Prohibit,
-            XmlResolver = null
+            XmlResolver = null,
+            MaxCharactersInDocument = 16 * 1024 * 1024
         });
         return XDocument.Load(reader);
     }
@@ -67,11 +68,14 @@ public class WebDavStorageProvider : IStorageProvider
             {
                 if (entry.Key == baseUrl)
                     continue;
-                // Only prune fully idle semaphores (no in-flight requests holding slots)
-                if (entry.Value.CurrentCount == MaxConcurrentPerServer &&
-                    ServerSemaphores.TryRemove(entry.Key, out var removed))
+                // Only prune fully idle semaphores (no in-flight requests holding slots).
+                // Do NOT dispose removed entries: another thread may have already retrieved
+                // this instance from GetOrAdd and be about to call WaitAsync on it, which
+                // would throw ObjectDisposedException. An undisposed, unreferenced semaphore
+                // is reclaimed by the GC.
+                if (entry.Value.CurrentCount == MaxConcurrentPerServer)
                 {
-                    removed.Dispose();
+                    ServerSemaphores.TryRemove(entry.Key, out _);
                 }
             }
         }
@@ -111,6 +115,32 @@ public class WebDavStorageProvider : IStorageProvider
         _secureStorage = secureStorage;
     }
 
+    private static string? GetOriginHost(string url)
+    {
+        try
+        {
+            var uri = new Uri(url);
+            return $"{uri.Scheme}://{uri.Host}:{uri.Port}";
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static bool IsLoopbackHost(string url)
+    {
+        try
+        {
+            var uri = new Uri(url);
+            return uri.IsLoopback || uri.Host == "localhost";
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public async Task<WebDavDiagnosticResult> TestWebDavConnectionAsync(string serverUrl, string username, string password)
     {
         var result = new WebDavDiagnosticResult();
@@ -120,45 +150,56 @@ public class WebDavStorageProvider : IStorageProvider
             return result;
         }
 
+        if (serverUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && !IsLoopbackHost(serverUrl))
+        {
+            result.Success = false;
+            result.Message = "Insecure HTTP URL rejected.";
+            result.Details.Add("Credentials would be sent in cleartext over http://. Use an https:// URL instead.");
+            return result;
+        }
+
         string normalizedUrl = NormalizeWebDavUrl(serverUrl);
         result.Details.Add($"Normalized URL: {normalizedUrl}");
 
         try
         {
             var (response, contentString, finalUrl) = await SendWebDavPropfindAsync(normalizedUrl, username, password);
-            result.StatusCode = (int)response.StatusCode;
-
-            if (response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.MultiStatus)
+            using (response)
             {
-                result.Success = true;
-                result.Message = $"Connected successfully (HTTP {(int)response.StatusCode} {response.ReasonPhrase})";
+                result.StatusCode = (int)response.StatusCode;
 
-                if (!string.IsNullOrEmpty(contentString))
+                if (response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.MultiStatus)
                 {
-                    try
+                    result.Success = true;
+                    result.Message = $"Connected successfully (HTTP {(int)response.StatusCode} {response.ReasonPhrase})";
+
+                    if (!string.IsNullOrEmpty(contentString))
                     {
-                        var doc = ParseWebDavXml(contentString);
-                        var responseNodes = doc.Descendants().Where(x => x.Name.LocalName.Equals("response", StringComparison.OrdinalIgnoreCase));
-                        result.ItemsFound = responseNodes.Count();
-                        result.Details.Add($"Discovered {result.ItemsFound} XML response items from WebDAV server.");
-                    }
-                    catch (Exception xmlEx)
-                    {
-                        result.Details.Add($"XML Parsing warning: {xmlEx.Message}");
+                        try
+                        {
+                            var doc = ParseWebDavXml(contentString);
+                            var responseNodes = doc.Descendants().Where(x => x.Name.LocalName.Equals("response", StringComparison.OrdinalIgnoreCase));
+                            result.ItemsFound = responseNodes.Count();
+                            result.Details.Add($"Discovered {result.ItemsFound} XML response items from WebDAV server.");
+                        }
+                        catch (Exception xmlEx)
+                        {
+                            result.Details.Add($"XML Parsing warning: {xmlEx.Message}");
+                        }
                     }
                 }
-            }
-            else
-            {
-                result.Success = false;
-                result.Message = $"HTTP Error {(int)response.StatusCode} ({response.ReasonPhrase})";
-                if (response.StatusCode == HttpStatusCode.Unauthorized)
+                else
                 {
-                    result.Details.Add("401 Unauthorized: Check username and password/token.");
-                }
-                else if (response.StatusCode == HttpStatusCode.NotFound)
-                {
-                    result.Details.Add("404 Not Found: WebDAV URI path does not exist on server.");
+                    result.Success = false;
+                    result.Message = $"HTTP Error {(int)response.StatusCode} ({response.ReasonPhrase})";
+                    if (response.StatusCode == HttpStatusCode.Unauthorized)
+                    {
+                        result.Details.Add("401 Unauthorized: Check username and password/token.");
+                    }
+                    else if (response.StatusCode == HttpStatusCode.NotFound)
+                    {
+                        result.Details.Add("404 Not Found: WebDAV URI path does not exist on server.");
+                    }
                 }
             }
         }
@@ -192,11 +233,13 @@ public class WebDavStorageProvider : IStorageProvider
 
             if (!response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.MultiStatus)
             {
+                response.Dispose();
                 sb.AppendLine($"[ERROR]: Server rejected PROPFIND with HTTP {(int)response.StatusCode}");
                 return sb.ToString();
             }
 
             var doc = ParseWebDavXml(xmlContent);
+            response.Dispose();
             var responseNodes = doc.Descendants().Where(x => x.Name.LocalName.Equals("response", StringComparison.OrdinalIgnoreCase)).ToList();
 
             sb.AppendLine($"Total XML <response> nodes found: {responseNodes.Count}");
@@ -251,8 +294,15 @@ public class WebDavStorageProvider : IStorageProvider
             return string.Empty;
 
         var url = rawUrl.Trim();
-        if (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
-            !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+
+        // Enforce HTTPS for non-loopback hosts so Basic credentials are never
+        // transmitted in cleartext. Loopback (localhost) is allowed for local dev.
+        if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && !IsLoopbackHost(url))
+        {
+            url = "https://" + url.Substring("http://".Length);
+        }
+        else if (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+                 !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
         {
             url = "https://" + url;
         }
@@ -286,6 +336,7 @@ public class WebDavStorageProvider : IStorageProvider
         {
             string currentUrl = targetUrl;
             int maxRedirects = AppConstants.MaxHttpRedirects;
+            var originHost = GetOriginHost(targetUrl);
 
             for (int i = 0; i < maxRedirects; i++)
             {
@@ -296,7 +347,10 @@ public class WebDavStorageProvider : IStorageProvider
                     request.Headers.Add("Depth", "1");
                     request.Content = new StringContent(PropfindBody, Encoding.UTF8, "application/xml");
 
-                    AddBasicAuth(request, username, password);
+                    // Only forward Basic auth to the same origin. A cross-origin
+                    // redirect must not receive our credentials.
+                    if (GetOriginHost(currentUrl) == originHost)
+                        AddBasicAuth(request, username, password);
 
                     response = await HttpClient.SendAsync(request);
                 }
@@ -307,8 +361,10 @@ public class WebDavStorageProvider : IStorageProvider
                     var bodylessRequest = new HttpRequestMessage(new HttpMethod("PROPFIND"), currentUrl);
                     bodylessRequest.Headers.Add("Depth", "1");
 
-                    AddBasicAuth(bodylessRequest, username, password);
+                    if (GetOriginHost(currentUrl) == originHost)
+                        AddBasicAuth(bodylessRequest, username, password);
 
+                    response?.Dispose();
                     response = await HttpClient.SendAsync(bodylessRequest);
                 }
 
@@ -320,6 +376,7 @@ public class WebDavStorageProvider : IStorageProvider
                     (int)response.StatusCode == 308)
                 {
                     var redirectLocation = response.Headers.Location;
+                    response.Dispose();
                     if (redirectLocation != null)
                     {
                         var baseUri = new Uri(currentUrl);
@@ -336,10 +393,12 @@ public class WebDavStorageProvider : IStorageProvider
                 {
                     var bodylessRequest = new HttpRequestMessage(new HttpMethod("PROPFIND"), currentUrl);
                     bodylessRequest.Headers.Add("Depth", "1");
-                    AddBasicAuth(bodylessRequest, username, password);
+                    if (GetOriginHost(currentUrl) == originHost)
+                        AddBasicAuth(bodylessRequest, username, password);
 
                     var bodylessResponse = await HttpClient.SendAsync(bodylessRequest);
                     var bodylessContent = await bodylessResponse.Content.ReadAsStringAsync();
+                    response.Dispose();
                     return (bodylessResponse, bodylessContent, currentUrl);
                 }
 
@@ -361,9 +420,12 @@ public class WebDavStorageProvider : IStorageProvider
         if (string.IsNullOrEmpty(folderSource.PathOrUrl))
             return result;
 
+        var username = await _secureStorage.DecryptAndGetAsync(folderSource.EncryptedUsername) ?? string.Empty;
+        var password = await _secureStorage.DecryptAndGetAsync(folderSource.EncryptedPasswordOrToken) ?? string.Empty;
+
         var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var resultSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        await ScanWebDavDirectoryRecursiveAsync(folderSource, NormalizeWebDavUrl(folderSource.PathOrUrl), result, visited, resultSet, currentDepth: 0, maxDepth: AppConstants.MaxWebDavRecursionDepth);
+        await ScanWebDavDirectoryRecursiveAsync(folderSource, NormalizeWebDavUrl(folderSource.PathOrUrl), result, visited, resultSet, currentDepth: 0, maxDepth: AppConstants.MaxWebDavRecursionDepth, username, password);
         return result;
     }
 
@@ -383,8 +445,11 @@ public class WebDavStorageProvider : IStorageProvider
             var password = await _secureStorage.DecryptAndGetAsync(folderSource.EncryptedPasswordOrToken) ?? string.Empty;
 
             var (response, xmlContent, finalUrl) = await SendWebDavPropfindAsync(targetUrl, username, password);
-            if (!response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.MultiStatus)
-                return listing;
+            using (response)
+            {
+                if (!response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.MultiStatus)
+                    return listing;
+            }
 
             ct.ThrowIfCancellationRequested();
 
@@ -452,7 +517,9 @@ public class WebDavStorageProvider : IStorageProvider
         HashSet<string> visitedUrls,
         HashSet<string> resultSet,
         int currentDepth,
-        int maxDepth)
+        int maxDepth,
+        string username,
+        string password)
     {
         if (currentDepth > maxDepth || visitedUrls.Contains(currentUrl))
             return;
@@ -461,12 +528,12 @@ public class WebDavStorageProvider : IStorageProvider
 
         try
         {
-            var username = await _secureStorage.DecryptAndGetAsync(folderSource.EncryptedUsername) ?? string.Empty;
-            var password = await _secureStorage.DecryptAndGetAsync(folderSource.EncryptedPasswordOrToken) ?? string.Empty;
-
             var (response, xmlContent, finalUrl) = await SendWebDavPropfindAsync(currentUrl, username, password);
-            if (!response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.MultiStatus)
-                return;
+            using (response)
+            {
+                if (!response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.MultiStatus)
+                    return;
+            }
 
             var doc = ParseWebDavXml(xmlContent);
             var responseNodes = doc.Descendants().Where(x => x.Name.LocalName.Equals("response", StringComparison.OrdinalIgnoreCase));
@@ -507,7 +574,7 @@ public class WebDavStorageProvider : IStorageProvider
 
             foreach (var subUrl in subfolderUrls)
             {
-                await ScanWebDavDirectoryRecursiveAsync(folderSource, subUrl, resultList, visitedUrls, resultSet, currentDepth + 1, maxDepth);
+                await ScanWebDavDirectoryRecursiveAsync(folderSource, subUrl, resultList, visitedUrls, resultSet, currentDepth + 1, maxDepth, username, password);
             }
         }
         catch
@@ -530,8 +597,11 @@ public class WebDavStorageProvider : IStorageProvider
             var password = await _secureStorage.DecryptAndGetAsync(folderSource.EncryptedPasswordOrToken) ?? string.Empty;
 
             var (response, xmlContent, finalUrl) = await SendWebDavPropfindAsync(targetUrl, username, password);
-            if (!response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.MultiStatus)
-                return result;
+            using (response)
+            {
+                if (!response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.MultiStatus)
+                    return result;
+            }
 
             var doc = ParseWebDavXml(xmlContent);
             var responseNodes = doc.Descendants().Where(x => x.Name.LocalName.Equals("response", StringComparison.OrdinalIgnoreCase));
@@ -577,11 +647,14 @@ public class WebDavStorageProvider : IStorageProvider
 
             string currentUrl = imageIdentifier;
             int maxRedirects = AppConstants.MaxHttpRedirects;
+            var originHost = GetOriginHost(imageIdentifier);
 
             for (int i = 0; i < maxRedirects; i++)
             {
                 var request = new HttpRequestMessage(HttpMethod.Get, currentUrl);
-                AddBasicAuth(request, username, password);
+                // Only forward Basic auth within the same origin.
+                if (GetOriginHost(currentUrl) == originHost)
+                    AddBasicAuth(request, username, password);
 
                 var response = await HttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
 
@@ -592,6 +665,7 @@ public class WebDavStorageProvider : IStorageProvider
                     (int)response.StatusCode == 308)
                 {
                     var loc = response.Headers.Location;
+                    response.Dispose();
                     if (loc != null)
                     {
                         currentUrl = new Uri(new Uri(currentUrl), loc).ToString();
@@ -603,6 +677,8 @@ public class WebDavStorageProvider : IStorageProvider
                 {
                     return await response.Content.ReadAsStreamAsync();
                 }
+
+                response.Dispose();
             }
         }
         catch

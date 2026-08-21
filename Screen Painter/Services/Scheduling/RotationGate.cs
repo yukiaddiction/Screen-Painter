@@ -56,4 +56,18 @@ public class RotationGate
 
     public bool TryGetLastRotated(string collectionId, out DateTime lastRotated)
         => _lastRotated.TryGetValue(collectionId, out lastRotated);
+
+    /// <summary>
+    /// Removes gate entries for collections that no longer exist (deleted), keeping
+    /// the internal dictionary bounded over the lifetime of a 24/7 service.
+    /// </summary>
+    public void PruneToValidIds(IEnumerable<string> validIds)
+    {
+        var valid = new HashSet<string>(validIds, StringComparer.OrdinalIgnoreCase);
+        foreach (var key in _lastRotated.Keys)
+        {
+            if (!valid.Contains(key))
+                _lastRotated.TryRemove(key, out _);
+        }
+    }
 }

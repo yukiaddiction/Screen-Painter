@@ -91,10 +91,6 @@ public static class MauiProgram
             logging.AddProvider(new FileLoggerProvider());
         });
 
-#if DEBUG
-        builder.Logging.AddDebug();
-#endif
-
         var app = builder.Build();
         ServiceAccessor.Initialize(app.Services);
         return app;

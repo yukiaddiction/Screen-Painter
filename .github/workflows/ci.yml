@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Unit Tests (net9.0)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore Test Project
+        run: dotnet restore "ScreenPainter.Tests/ScreenPainter.Tests.csproj"
+
+      - name: Build Test Project
+        run: dotnet build "ScreenPainter.Tests/ScreenPainter.Tests.csproj" -c Release --no-restore
+
+      - name: Run Tests
+        run: dotnet test "ScreenPainter.Tests/ScreenPainter.Tests.csproj" -c Release --no-build
+
+  android-build:
+    name: Android Build (net9.0-android)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Install MAUI Workload
+        run: dotnet workload install maui-android --skip-manifest-update
+
+      - name: Restore Android Target
+        run: dotnet restore "Screen Painter/Screen Painter.csproj" -p:TargetFramework=net9.0-android
+
+      - name: Build Android Target
+        run: dotnet build "Screen Painter/Screen Painter.csproj" -f net9.0-android -c Release --no-restore

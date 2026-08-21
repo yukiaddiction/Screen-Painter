@@ -127,9 +127,9 @@ public class CollectionGalleryViewModel : BaseViewModel, IQueryAttributable
 
         Title = "Collection Pictures";
 
-        LoadMoreCommand = new Command(async () => await LoadMoreAsync());
-        EditImageCommand = new Command<GalleryImageItem>(async (item) => await EditImageAsync(item));
-        RefreshCommand = new Command(async () => await ForceRefreshAsync());
+        LoadMoreCommand = new AsyncCommand(async () => await LoadMoreAsync());
+        EditImageCommand = new AsyncCommand<GalleryImageItem>(async (item) => await EditImageAsync(item));
+        RefreshCommand = new AsyncCommand(async () => await ForceRefreshAsync());
     }
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)

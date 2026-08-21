@@ -14,6 +14,7 @@ using Screen_Painter.Services.Scheduling;
 using Screen_Painter.Services.Security;
 using Screen_Painter.Services.Storage;
 using Screen_Painter.Services.Wallpaper;
+using Screen_Painter.Views;
 
 namespace Screen_Painter.ViewModels;
 
@@ -184,14 +185,14 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
 
         Title = "Edit Collection";
 
-        SaveCommand = new Command(async () => await SaveAsync());
-        ReapplyNowCommand = new Command(async () => await ReapplyNowAsync());
-        AddLocalFolderCommand = new Command<string>(async (path) => await AddLocalFolderAsync(path));
-        AddSavedCloudAccountCommand = new Command(async () => await AddSavedCloudAccountAsync());
-        GoToSettingsCommand = new Command(async () => await GoToSettingsAsync());
-        RemoveFolderCommand = new Command<FolderSource>(async (f) => await RemoveFolderAsync(f));
-        EditFramingCommand = new Command(async () => await EditFramingAsync());
-        BrowsePicturesCommand = new Command(async () => await BrowsePicturesAsync());
+        SaveCommand = new AsyncCommand(async () => await SaveAsync());
+        ReapplyNowCommand = new AsyncCommand(async () => await ReapplyNowAsync());
+        AddLocalFolderCommand = new AsyncCommand<string>(async (path) => await AddLocalFolderAsync(path));
+        AddSavedCloudAccountCommand = new AsyncCommand(async () => await AddSavedCloudAccountAsync());
+        GoToSettingsCommand = new AsyncCommand(async () => await GoToSettingsAsync());
+        RemoveFolderCommand = new AsyncCommand<FolderSource>(async (f) => await RemoveFolderAsync(f));
+        EditFramingCommand = new AsyncCommand(async () => await EditFramingAsync());
+        BrowsePicturesCommand = new AsyncCommand(async () => await BrowsePicturesAsync());
     }
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)
@@ -463,12 +464,12 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
         var selected = accounts.FirstOrDefault(a => $"{a.Name} ({a.Type})" == choice);
         if (selected == null) return;
 
-        await ShellHelper.GoToAsync($"CloudFolderPickerPage?accountId={selected.Id}&serverUrl={Uri.EscapeDataString(selected.ServerUrl)}&type={selected.Type}&userKey={selected.EncryptedUsername}&passKey={selected.EncryptedPasswordOrToken}");
+        await ShellHelper.GoToAsync($"CloudFolderPickerPage?accountId={selected.Id}&serverUrl={Uri.EscapeDataString(selected.ServerUrl)}&type={selected.Type}&userKey={Uri.EscapeDataString(selected.EncryptedUsername)}&passKey={Uri.EscapeDataString(selected.EncryptedPasswordOrToken)}");
     }
 
     private async Task GoToSettingsAsync()
     {
-        await ShellHelper.GoToAsync("//SettingsPage");
+        await ShellHelper.GoToAsync(nameof(SettingsPage));
     }
 
     private async Task RemoveFolderAsync(FolderSource? folder)

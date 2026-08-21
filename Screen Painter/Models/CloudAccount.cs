@@ -27,5 +27,5 @@ public class CloudAccount : CredentialedEntity, IEquatable<CloudAccount>
 
     public override bool Equals(object? obj) => obj is CloudAccount account && Equals(account);
 
-    public override int GetHashCode() => Id.GetHashCode();
+    public override int GetHashCode() => StringComparer.OrdinalIgnoreCase.GetHashCode(Id);
 }

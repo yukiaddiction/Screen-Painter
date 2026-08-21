@@ -33,10 +33,10 @@ public class LogViewerViewModel : BaseViewModel
         _logService = logService;
         Title = "Application Logs";
 
-        CopyCommand = new Command(async () => await CopyAsync());
-        RefreshCommand = new Command(async () => await RefreshAsync());
-        ToggleModeCommand = new Command(async () => await ToggleModeAsync());
-        OpenFileCommand = new Command(async () => await _logService.OpenLogFileAsync());
+        CopyCommand = new AsyncCommand(async () => await CopyAsync());
+        RefreshCommand = new AsyncCommand(async () => await RefreshAsync());
+        ToggleModeCommand = new AsyncCommand(async () => await ToggleModeAsync());
+        OpenFileCommand = new AsyncCommand(async () => await _logService.OpenLogFileAsync());
     }
 
     public async Task LoadTailAsync()

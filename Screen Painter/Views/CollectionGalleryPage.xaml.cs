@@ -33,6 +33,9 @@ public partial class CollectionGalleryPage : ContentPage
         base.OnDisappearing();
         try
         {
+            // Cancel in-flight thumbnail/scan jobs so they can't keep the (otherwise
+            // unreachable) ViewModel alive after navigating away.
+            _viewModel.CancelSession();
             await _viewModel.SaveStateAndSuspendAsync();
         }
         catch (System.Exception ex)

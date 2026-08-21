@@ -20,7 +20,10 @@ public class OAuthStorageProvider : IStorageProvider
     private static readonly HttpClient HttpClient = new(new SocketsHttpHandler
     {
         PooledConnectionLifetime = TimeSpan.FromMinutes(5)
-    });
+    })
+    {
+        Timeout = TimeSpan.FromSeconds(AppConstants.HttpRequestTimeoutSeconds)
+    };
 
     public StorageType SupportedType => StorageType.OAuthCloud;
 
@@ -37,8 +40,9 @@ public class OAuthStorageProvider : IStorageProvider
             var token = authResult?.AccessToken ?? authResult?.Properties?.GetValueOrDefault("access_token");
             return token;
         }
-        catch
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[OAuth Authenticate Error]: {ex.Message}");
             return null;
         }
     }
@@ -51,6 +55,8 @@ public class OAuthStorageProvider : IStorageProvider
 
         try
         {
+            ct.ThrowIfCancellationRequested();
+
             var token = await _secureStorage.DecryptAndGetAsync(folderSource.EncryptedPasswordOrToken);
             if (string.IsNullOrEmpty(token))
                 return result;
@@ -58,14 +64,19 @@ public class OAuthStorageProvider : IStorageProvider
             var request = new HttpRequestMessage(HttpMethod.Get, folderSource.PathOrUrl);
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-            var response = await HttpClient.SendAsync(request);
+            using var response = await HttpClient.SendAsync(request, ct);
+            ct.ThrowIfCancellationRequested();
             if (response.IsSuccessStatusCode)
             {
-                var content = await response.Content.ReadAsStringAsync();
+                var content = await response.Content.ReadAsStringAsync(ct);
                 var identifiers = ParseIdentifiersFromJson(content);
                 if (identifiers.Count > 0)
                     return identifiers;
             }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -93,7 +104,7 @@ public class OAuthStorageProvider : IStorageProvider
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             }
 
-            var response = await HttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+            using var response = await HttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
             if (response.IsSuccessStatusCode)
             {
                 return await response.Content.ReadAsStreamAsync();
@@ -178,17 +189,7 @@ public class OAuthStorageProvider : IStorageProvider
 
     private static bool IsImageUrl(string value)
     {
-        var extensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg", ".heic", ".heif"
-        };
-
-        foreach (var ext in extensions)
-        {
-            if (value.EndsWith(ext, StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
-
-        return false;
+        var ext = System.IO.Path.GetExtension(value);
+        return ImageExtensions.Valid.Contains(ext);
     }
 }

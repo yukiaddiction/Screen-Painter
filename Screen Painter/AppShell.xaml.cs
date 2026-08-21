@@ -19,7 +19,14 @@ public partial class AppShell : Shell
     private async void OnSettingsMenuItemClicked(object sender, System.EventArgs e)
     {
         FlyoutIsPresented = false; // Close drawer
-        await GoToAsync(nameof(SettingsPage));
+        try
+        {
+            await GoToAsync(nameof(SettingsPage));
+        }
+        catch (System.Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Settings Navigation Error]: {ex.Message}");
+        }
     }
 
     private bool _backNavigationInProgress;

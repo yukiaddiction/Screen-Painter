@@ -31,16 +31,41 @@ public abstract class JsonFileRepository
                 return new List<T>();
 
             var json = await File.ReadAllTextAsync(_filePath).ConfigureAwait(false);
-            return JsonSerializer.Deserialize<List<T>>(json) ?? new List<T>();
+            var items = JsonSerializer.Deserialize<List<T>>(json);
+            if (items != null)
+                return items;
+
+            // Unrecoverable parse: quarantine the corrupt file so the app starts
+            // fresh instead of silently treating "no accounts" as the truth.
+            QuarantineCorruptFile();
+            return new List<T>();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to read {FileName}", Path.GetFileName(_filePath));
+            QuarantineCorruptFile();
             return new List<T>();
         }
         finally
         {
             _semaphore.Release();
+        }
+    }
+
+    private void QuarantineCorruptFile()
+    {
+        try
+        {
+            if (!File.Exists(_filePath))
+                return;
+            var corruptPath = _filePath + ".corrupt";
+            File.Move(_filePath, corruptPath, overwrite: true);
+            _logger.LogWarning("Quarantined corrupt data file {FileName} -> {CorruptName}",
+                Path.GetFileName(_filePath), Path.GetFileName(corruptPath));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to quarantine corrupt data file {FileName}", Path.GetFileName(_filePath));
         }
     }
 
@@ -53,7 +78,18 @@ public abstract class JsonFileRepository
             if (File.Exists(_filePath))
             {
                 var json = await File.ReadAllTextAsync(_filePath).ConfigureAwait(false);
-                items = JsonSerializer.Deserialize<List<T>>(json) ?? new List<T>();
+                var deserialized = JsonSerializer.Deserialize<List<T>>(json);
+                if (deserialized == null)
+                {
+                    // Corrupt existing data would make every subsequent write fail
+                    // forever. Quarantine it and start from an empty list instead.
+                    QuarantineCorruptFile();
+                    items = new List<T>();
+                }
+                else
+                {
+                    items = deserialized;
+                }
             }
             else
             {
@@ -68,10 +104,19 @@ public abstract class JsonFileRepository
 
             await File.WriteAllTextAsync(tmpPath, resultJson).ConfigureAwait(false);
 
-            if (File.Exists(_filePath))
-                File.Replace(tmpPath, _filePath, bakPath);
-            else
-                File.Move(tmpPath, _filePath);
+            try
+            {
+                if (File.Exists(_filePath))
+                    File.Replace(tmpPath, _filePath, bakPath);
+                else
+                    File.Move(tmpPath, _filePath);
+            }
+            catch
+            {
+                // File.Replace can fail on some filesystems; fall back to an
+                // overwriting move so the write still lands atomically enough.
+                File.Move(tmpPath, _filePath, overwrite: true);
+            }
         }
         catch (Exception ex)
         {

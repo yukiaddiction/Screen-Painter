@@ -60,7 +60,7 @@ public class SettingsViewModel : BaseViewModel
         set
         {
             if (SetProperty(ref _isAutoUpdateCheckEnabled, value))
-                Microsoft.Maui.Storage.Preferences.Default.Set("AutoUpdateCheck", value);
+                Microsoft.Maui.Storage.Preferences.Default.Set(AppConstants.AutoUpdateCheckPreferenceKey, value);
         }
     }
 
@@ -93,7 +93,7 @@ public class SettingsViewModel : BaseViewModel
                 {
                     if (Application.Current != null)
                         Application.Current.UserAppTheme = value ? AppTheme.Dark : AppTheme.Light;
-                    Microsoft.Maui.Storage.Preferences.Default.Set("AppTheme", value ? "Dark" : "Light");
+                    Microsoft.Maui.Storage.Preferences.Default.Set(AppConstants.AppThemePreferenceKey, value ? AppConstants.DarkThemeValue : AppConstants.LightThemeValue);
                 });
             }
         }
@@ -116,21 +116,21 @@ public class SettingsViewModel : BaseViewModel
         _updateCheckService = updateCheckService;
         Title = "Cloud Accounts & Settings";
 
-        var themePref = Microsoft.Maui.Storage.Preferences.Default.Get("AppTheme", AppConstants.DefaultAppTheme);
-        _isDarkMode = themePref == "Dark";
+        var themePref = Microsoft.Maui.Storage.Preferences.Default.Get(AppConstants.AppThemePreferenceKey, AppConstants.DefaultAppTheme);
+        _isDarkMode = themePref == AppConstants.DarkThemeValue;
 
-        _isAutoUpdateCheckEnabled = Microsoft.Maui.Storage.Preferences.Default.Get("AutoUpdateCheck", true);
+        _isAutoUpdateCheckEnabled = Microsoft.Maui.Storage.Preferences.Default.Get(AppConstants.AutoUpdateCheckPreferenceKey, true);
 
-        LoadAccountsCommand = new Command(async () => await LoadAccountsAsync());
-        AddWebDavAccountCommand = new Command(async () => await AddWebDavAccountAsync());
-        AddOAuthAccountCommand = new Command(async () => await AddOAuthAccountAsync());
-        DeleteAccountCommand = new Command<CloudAccount>(async (a) => await DeleteAccountAsync(a));
-        TestWebDavAccountCommand = new Command<CloudAccount>(async (a) => await TestWebDavAccountAsync(a));
-        RequestBatteryExemptionCommand = new Command(async () => await RequestBatteryExemptionAsync());
-        ViewLogsCommand = new Command(async () => await ShellHelper.GoToAsync(nameof(Views.LogViewerPage)));
-        CopyLogsCommand = new Command(async () => await _logService.CopyLogsToClipboardAsync());
-        CheckForUpdatesCommand = new Command(async () => await CheckForUpdatesAsync());
-        OpenGitHubCommand = new Command(async () => await OpenGitHubAsync());
+        LoadAccountsCommand = new AsyncCommand(async () => await LoadAccountsAsync());
+        AddWebDavAccountCommand = new AsyncCommand(async () => await AddWebDavAccountAsync());
+        AddOAuthAccountCommand = new AsyncCommand(async () => await AddOAuthAccountAsync());
+        DeleteAccountCommand = new AsyncCommand<CloudAccount>(async (a) => await DeleteAccountAsync(a));
+        TestWebDavAccountCommand = new AsyncCommand<CloudAccount>(async (a) => await TestWebDavAccountAsync(a));
+        RequestBatteryExemptionCommand = new AsyncCommand(async () => await RequestBatteryExemptionAsync());
+        ViewLogsCommand = new AsyncCommand(async () => await ShellHelper.GoToAsync(nameof(Views.LogViewerPage)));
+        CopyLogsCommand = new AsyncCommand(async () => await _logService.CopyLogsToClipboardAsync());
+        CheckForUpdatesCommand = new AsyncCommand(async () => await CheckForUpdatesAsync());
+        OpenGitHubCommand = new AsyncCommand(async () => await OpenGitHubAsync());
 
         LogSummary = _logService.GetLogSummary();
 
@@ -201,19 +201,22 @@ public class SettingsViewModel : BaseViewModel
         string? username = await ShellHelper.DisplayPromptAsync("WebDAV Auth", "Enter Username:");
         string? password = await ShellHelper.DisplayPromptAsync("WebDAV Auth", "Enter Password:", keyboard: Keyboard.Password);
 
-        var encryptedUserKey = Guid.NewGuid().ToString();
-        var encryptedPassKey = Guid.NewGuid().ToString();
+        var encryptedUsername = await _secureStorage.EncryptAndSaveAsync(Guid.NewGuid().ToString(), username ?? string.Empty);
+        var encryptedPassword = await _secureStorage.EncryptAndSaveAsync(Guid.NewGuid().ToString(), password ?? string.Empty);
 
-        await _secureStorage.EncryptAndSaveAsync(encryptedUserKey, username ?? string.Empty);
-        await _secureStorage.EncryptAndSaveAsync(encryptedPassKey, password ?? string.Empty);
+        if (string.IsNullOrEmpty(encryptedUsername) || string.IsNullOrEmpty(encryptedPassword))
+        {
+            await ShellHelper.DisplayAlert("Security Error", "Failed to encrypt the account credentials. The account was not saved.", "OK");
+            return;
+        }
 
         var account = new CloudAccount
         {
             Name = name,
             ServerUrl = url,
             Type = StorageType.WebDav,
-            EncryptedUsername = encryptedUserKey,
-            EncryptedPasswordOrToken = encryptedPassKey
+            EncryptedUsername = encryptedUsername,
+            EncryptedPasswordOrToken = encryptedPassword
         };
 
         // Test connection immediately upon creating
@@ -247,15 +250,20 @@ public class SettingsViewModel : BaseViewModel
         if (string.IsNullOrEmpty(url)) return;
 
         string? token = await ShellHelper.DisplayPromptAsync("OAuth Auth Token", "Enter Access Token or Auth Key:", keyboard: Keyboard.Password);
-        var tokenKey = Guid.NewGuid().ToString();
-        await _secureStorage.EncryptAndSaveAsync(tokenKey, token ?? string.Empty);
+        var encryptedToken = await _secureStorage.EncryptAndSaveAsync(Guid.NewGuid().ToString(), token ?? string.Empty);
+
+        if (string.IsNullOrEmpty(encryptedToken))
+        {
+            await ShellHelper.DisplayAlert("Security Error", "Failed to encrypt the access token. The account was not saved.", "OK");
+            return;
+        }
 
         var account = new CloudAccount
         {
             Name = name,
             ServerUrl = url,
             Type = StorageType.OAuthCloud,
-            EncryptedPasswordOrToken = tokenKey
+            EncryptedPasswordOrToken = encryptedToken
         };
 
         await _cloudAccountService.SaveAccountAsync(account);
@@ -267,6 +275,12 @@ public class SettingsViewModel : BaseViewModel
     {
         if (account == null) return;
         await _cloudAccountService.DeleteAccountAsync(account.Id);
+
+        // Clean up any legacy platform-SecureStorage entries (no-op for the new
+        // ciphertext-envelope format, which lives in the account JSON itself).
+        await _secureStorage.RemoveAsync(account.EncryptedUsername);
+        await _secureStorage.RemoveAsync(account.EncryptedPasswordOrToken);
+
         CloudAccounts.Remove(account);
         _logger.LogInformation("Cloud account deleted — name: {Name}, type: {Type}", account.Name, account.Type);
     }
