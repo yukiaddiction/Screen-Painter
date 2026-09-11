@@ -33,7 +33,7 @@ public class AutoFramingOptions
     /// the crop would be driven by the subject band, which is far wider than a phone screen and
     /// would over-zoom small faces badly.
     /// </summary>
-    public double TargetFaceHeightRatio { get; set; } = 0.30;
+    public double TargetFaceHeightRatio { get; set; } = 0.24;
 
     /// <summary>
     /// How far below the face the subject is assumed to continue — head, shoulders and any held
@@ -53,11 +53,11 @@ public class AutoFramingOptions
 
     /// <summary>
     /// Hard cap on the aspect-preserving crop when enlarging, relative to the plain fill scale.
-    /// Stops a distant face from being blown up into mush on a long phone screen. 1.6x keeps a
-    /// typical portrait source's face at roughly a fifth to a quarter of the screen height, which
-    /// reads as a wallpaper rather than a passport photo.
+    /// Stops a distant face from being blown up into mush on a long phone screen. 1.35x keeps a
+    /// typical portrait source's face at roughly a fifth of the screen height, which reads as a
+    /// wallpaper rather than a passport photo.
     /// </summary>
-    public double MaxUpscale { get; set; } = 1.6;
+    public double MaxUpscale { get; set; } = 1.35;
 
     /// <summary>Long edge, in pixels, that the image is downscaled to before inference.</summary>
     public int MaxPixels { get; set; } = 640;

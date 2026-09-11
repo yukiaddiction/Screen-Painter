@@ -79,6 +79,7 @@ public static class AppConstants
     {
         HeadTopRatio = _settings.AutoFraming.HeadTopRatio,
         HorizontalSafeBand = _settings.AutoFraming.HorizontalSafeBand,
+        TargetFaceHeightRatio = _settings.AutoFraming.TargetFaceHeightRatio,
         TorsoExtendRatio = _settings.AutoFraming.TorsoExtendRatio,
         TopMarginRatio = _settings.AutoFraming.TopMarginRatio,
         MinFaceAreaRatio = _settings.AutoFraming.MinFaceAreaRatio,

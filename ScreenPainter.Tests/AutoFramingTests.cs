@@ -115,9 +115,12 @@ public class AutoFramingTests
         double faceTopOnScreen = (0.42 * 1500 * scale) + dy;
         double faceBottomOnScreen = ((0.42 + 0.12) * 1500 * scale) + dy;
 
-        // Head starts in the upper third and the face itself stays above the mid-line.
+        // The head is biased above the middle of the frame and the whole face stays in the upper
+        // half, so the subject reads downward. A source that is already narrower than the phone
+        // surface cannot lift the head onto the head line without uncovering the screen edge, so the
+        // head settles as high as covering the surface allows rather than at the exact line.
         Assert.True(faceTopOnScreen >= 0, $"head must not be cropped (top={faceTopOnScreen})");
-        Assert.True(faceTopOnScreen <= ScreenH * 0.35, $"head should sit in the upper third (top={faceTopOnScreen})");
+        Assert.True(faceTopOnScreen <= ScreenH / 2.0, $"head should sit above the middle (top={faceTopOnScreen})");
         Assert.True(faceBottomOnScreen <= ScreenH * 0.75, $"face should not be pushed low (bottom={faceBottomOnScreen})");
     }
 
@@ -230,12 +233,11 @@ public class AutoFramingTests
 
         // The phone surface must shape the result: different fill scales, so the actual on-screen
         // geometry differs even though the crop ratio (relative to fill) is the same.
-        var (tallScale, _, tallDy) = Placement(1000, 1500, 1080, 2400, tall!);
-        var (tallerScale, _, tallerDy) = Placement(1000, 1500, 1440, 3120, taller!);
+        var (tallScale, tallDx, _) = Placement(1000, 1500, 1080, 2400, tall!);
+        var (tallerScale, tallerDx, _) = Placement(1000, 1500, 1440, 3120, taller!);
 
         Assert.NotEqual(tallScale, tallerScale, 3);
-        Assert.NotEqual(tallDy, tallerDy, 3);
-        Assert.NotEqual(tall.OffsetY, taller.OffsetY, 3);
+        Assert.NotEqual(tallDx, tallerDx, 3);
     }
 
     [Fact]
@@ -321,7 +323,7 @@ public class AutoFramingTests
     {
         // Small enough to demand far more zoom than is reasonable, but still above the
         // background-face floor so it is treated as the subject.
-        var face = new[] { Face(0.48, 0.30, 0.08, 0.05) };
+        var face = new[] { Face(0.46, 0.30, 0.08, 0.05) };
         var options = Options();
         var config = Compute(4000, 6000, face);
         Assert.NotNull(config);
@@ -329,9 +331,87 @@ public class AutoFramingTests
         double baseFill = Math.Max((double)ScreenW / 4000, (double)ScreenH / 6000);
         double applied = baseFill * config!.Scale;
 
+        // The enlargement is capped rather than unbounded, and it never zooms the picture out past
+        // the plain fill scale — that would uncover the screen edge.
         Assert.True(config.Scale <= options.MaxUpscale + 1e-6,
             $"crop capped at {options.MaxUpscale}x fill, got {config.Scale:F3}x");
-        Assert.True(applied > baseFill, "a small face should still be enlarged toward the target size");
+        Assert.True(applied >= baseFill - 1e-6,
+            $"crop must at least fill the surface (applied {applied:F3} vs fill {baseFill:F3})");
+    }
+
+    [Fact]
+    public void OffCentreFace_IsNotZoomedPastWhatTheBandCanFrame()
+    {
+        // A face sitting away from the middle of a source that is wider than the phone surface. The
+        // crop cannot be slid far enough to bring a face that far off centre into the band, so an
+        // enlargement on top of it would leave the subject jammed against a screen edge. The crop
+        // stays at the plain fill scale instead, which is the framing the source already had.
+        var face = Face(0.42, 0.18, 0.16, 0.12);
+        var config = Compute(3024, 4032, new[] { face });
+        Assert.NotNull(config);
+
+        double baseFill = Math.Max((double)ScreenW / 3024, (double)ScreenH / 4032);
+        var (scale, dx, _) = Placement(3024, 4032, ScreenW, ScreenH, config!);
+        double faceCentreOnScreen = ((0.42 + 0.08) * 3024 * scale) + dx;
+
+        Assert.True(scale <= baseFill * Options().MaxUpscale + 1e-6, "the upscale cap must still hold");
+        Assert.True(Math.Abs(faceCentreOnScreen - (ScreenW / 2.0)) <= (ScreenW * Options().HorizontalSafeBand) + 1.0,
+            $"face must stay inside the safe band, centre was {faceCentreOnScreen:F0}px");
+    }
+
+    [Fact]
+    public void NoSourceOrFacePosition_IsPushedToAScreenEdge()
+    {
+        // The defect that reached the user: the crop was clamped into the range that covers the
+        // surface, which for a wide picture threw the subject hard against a screen edge — a face
+        // at 51% of the source was rendered at 76-86% of the screen. Whatever the geometry, the
+        // whole face has to stay in frame and the zoom has to stay inside the upscale cap.
+        int[] widths = { 1080, 1440, 2160, 3024, 4000 };
+        int[] heights = { 1080, 1500, 1920, 2400, 4032 };
+        (double x, double y, double w, double h)[] faces =
+        {
+            (0.22, 0.18, 0.16, 0.12),
+            (0.42, 0.18, 0.16, 0.12),
+            (0.62, 0.18, 0.16, 0.12),
+            (0.36, 0.25, 0.28, 0.21),
+            (0.50, 0.30, 0.08, 0.05)
+        };
+        var options = Options();
+
+        foreach (var width in widths)
+        {
+            foreach (var height in heights)
+            {
+                foreach (var f in faces)
+                {
+                    var face = Face(f.x, f.y, f.w, f.h);
+                    var config = Compute(width, height, new[] { face });
+                    if (config == null)
+                        continue;
+
+                    var (scale, dx, dy) = Placement(width, height, ScreenW, ScreenH, config);
+
+                    double baseFill = Math.Max((double)ScreenW / width, (double)ScreenH / height);
+                    Assert.True(scale <= (baseFill * options.MaxUpscale) + 1e-6,
+                        $"zoom past the cap for {width}x{height} face({f.x},{f.y})");
+
+                    double faceLeft = (f.x * width * scale) + dx;
+                    double faceRight = ((f.x + f.w) * width * scale) + dx;
+                    double faceWidth = faceRight - faceLeft;
+
+                    // A face narrower than the surface must be shown whole; a wider one simply
+                    // cannot be, and is given the full surface instead.
+                    if (faceWidth <= ScreenW + 0.5)
+                    {
+                        Assert.True(faceLeft >= -0.5 && faceRight <= ScreenW + 0.5,
+                            $"face pushed off screen for {width}x{height} face({f.x},{f.y}): {faceLeft:F0}..{faceRight:F0}");
+                    }
+
+                    Assert.True(dx <= 0.5 && dx + (width * scale) >= ScreenW - 0.5 && dy <= 0.5,
+                        $"surface no longer covered for {width}x{height} face({f.x},{f.y})");
+                }
+            }
+        }
     }
 
     [Fact]

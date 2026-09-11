@@ -93,6 +93,9 @@ public class AutoFramingSettings
     /// <summary>How far below the face the subject continues, as a multiple of face height.</summary>
     public double TorsoExtendRatio { get; set; } = 2.4;
 
+    /// <summary>Share of the screen height the primary face should end up occupying.</summary>
+    public double TargetFaceHeightRatio { get; set; } = 0.24;
+
     /// <summary>Guaranteed headroom above the face, as a fraction of screen height.</summary>
     public double TopMarginRatio { get; set; } = 0.03;
 
@@ -103,7 +106,7 @@ public class AutoFramingSettings
     public double MinConfidence { get; set; } = 0.5;
 
     /// <summary>Cap on the aspect-preserving crop when enlarging, relative to the fill scale.</summary>
-    public double MaxUpscale { get; set; } = 2.0;
+    public double MaxUpscale { get; set; } = 1.35;
 
     /// <summary>Long edge, in pixels, that an image is downscaled to before inference.</summary>
     public int DetectionMaxPixels { get; set; } = 640;

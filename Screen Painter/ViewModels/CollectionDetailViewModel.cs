@@ -51,6 +51,8 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
                 OnPropertyChanged(nameof(IsOnRevealEnabled));
                 OnPropertyChanged(nameof(IsOnHideEnabled));
                 OnPropertyChanged(nameof(IsTimerVisible));
+                // The framing switch projects this collection, so it has to be re-read as well.
+                OnPropertyChanged(nameof(IsAutoFramingEnabled));
             }
         }
     }
@@ -72,6 +74,9 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
 
             CurrentCollection.AutoFramingEnabled = value;
             OnPropertyChanged();
+            // Persisted the moment it is flipped: the switch is a single setting rather than part of
+            // the form, so leaving the page without tapping Save must not silently lose it.
+            _ = SaveAutoFramingAsync();
         }
     }
 
@@ -317,7 +322,11 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
                 TimerIntervalMinutes = 15,
                 IsScheduleEnabled = false,
                 ScheduleDays = new List<DayOfWeek>(),
-                Folders = new List<FolderSource>()
+                Folders = new List<FolderSource>(),
+                // Settings → Smart Auto-Framing stores the starting value for a new collection;
+                // without reading it back the preference was saved and then never applied.
+                AutoFramingEnabled = Microsoft.Maui.Storage.Preferences.Default.Get(
+                    AppConstants.AutoFramingPreferenceKey, AppConstants.AutoFramingEnabledByDefault)
             };
         }
 
@@ -332,6 +341,19 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
         OnPropertyChanged(nameof(IsOnRevealEnabled));
         OnPropertyChanged(nameof(IsOnHideEnabled));
         OnPropertyChanged(nameof(IsTimerVisible));
+        OnPropertyChanged(nameof(IsAutoFramingEnabled));
+    }
+
+    private async Task SaveAutoFramingAsync()
+    {
+        try
+        {
+            await _scheduler.SaveCollectionAsync(CurrentCollection);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CollectionDetail AutoFraming Save Error]: {ex.Message}");
+        }
     }
 
     private void RefreshDayProperties()
