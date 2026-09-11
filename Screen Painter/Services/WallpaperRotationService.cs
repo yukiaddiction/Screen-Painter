@@ -44,11 +44,14 @@ public class WallpaperRotationService : IWallpaperRotationService
         bool fastApply = false)
     {
         string? nextImagePath = null;
+        string? detectionKey = null;
         bool isCached = false;
 
-        nextImagePath = await _cacheManager.PopNextCachedImageAsync(collection);
-        if (!string.IsNullOrEmpty(nextImagePath))
+        var cached = await _cacheManager.PopNextCachedImageInfoAsync(collection);
+        if (cached != null && !string.IsNullOrEmpty(cached.FilePath))
         {
+            nextImagePath = cached.FilePath;
+            detectionKey = cached.DetectionKey;
             isCached = true;
         }
 
@@ -64,6 +67,7 @@ public class WallpaperRotationService : IWallpaperRotationService
                     if (files != null && files.Any())
                     {
                         nextImagePath = files[Random.Shared.Next(files.Count)];
+                        detectionKey = nextImagePath;
                         break;
                     }
                 }
@@ -76,7 +80,7 @@ public class WallpaperRotationService : IWallpaperRotationService
             _logger.LogInformation("Wallpaper rotation — collection: {Name}, target: {Target}, source: {Source}, image: {Path}",
                 collection.Name, target, source, System.IO.Path.GetFileName(nextImagePath));
 
-            var framing = await _framingOverrides.ResolveFramingAsync(collection, nextImagePath);
+            var framing = await _framingOverrides.ResolveFramingAsync(collection, nextImagePath, detectionKey);
             var success = await _wallpaperService.ApplyWallpaperAsync(nextImagePath, target, framing, fastApply);
 
             if (success && isCached)

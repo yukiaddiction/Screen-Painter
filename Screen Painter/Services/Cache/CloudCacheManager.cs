@@ -15,16 +15,27 @@ namespace Screen_Painter.Services.Cache;
 public class CloudCacheManager : ICacheManager
 {
     private readonly IEnumerable<IStorageProvider> _storageProviders;
-    private readonly ILogger _logger;
+    private readonly ILogger<CloudCacheManager> _logger;
+    private readonly IAutoFramingService? _autoFraming;
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> _refillsInProgress = new();
     private DateTime _lastCacheSizeCheck = DateTime.MinValue;
     private readonly object _cacheSizeCheckLock = new();
     private static readonly TimeSpan CacheSizeCheckInterval = TimeSpan.FromMinutes(1);
 
-    public CloudCacheManager(IEnumerable<IStorageProvider> storageProviders, ILogger<CloudCacheManager> logger)
+    /// <summary>
+    /// Minimum file size worth analysing for a face. Guards against half-written downloads and
+    /// placeholder files, which would otherwise poison the detection cache with an empty result.
+    /// </summary>
+    private const long MinDetectableImageBytes = 4 * 1024;
+
+    public CloudCacheManager(
+        IEnumerable<IStorageProvider> storageProviders,
+        ILogger<CloudCacheManager> logger,
+        IAutoFramingService? autoFraming = null)
     {
         _storageProviders = storageProviders;
         _logger = logger;
+        _autoFraming = autoFraming;
     }
 
     private string GetCollectionCacheDir(string collectionId)
@@ -60,6 +71,12 @@ public class CloudCacheManager : ICacheManager
 
     public async Task<string?> PopNextCachedImageAsync(WallpaperCollection collection)
     {
+        var cached = await PopNextCachedImageInfoAsync(collection).ConfigureAwait(false);
+        return cached?.FilePath;
+    }
+
+    public async Task<CachedImage?> PopNextCachedImageInfoAsync(WallpaperCollection collection)
+    {
         var cacheDir = GetCollectionCacheDir(collection.Id);
         var allCachedFiles = Directory.GetFiles(cacheDir);
         if (allCachedFiles.Length == 0)
@@ -92,7 +109,8 @@ public class CloudCacheManager : ICacheManager
                     var files = await provider.ListImageIdentifiersAsync(localFolder);
                     if (files != null && files.Any())
                     {
-                        return files[Random.Shared.Next(files.Count)];
+                        var localPath = files[Random.Shared.Next(files.Count)];
+                        return new CachedImage(localPath, localPath);
                     }
                 }
             }
@@ -107,7 +125,25 @@ public class CloudCacheManager : ICacheManager
             if (oldestFile == null || fi.CreationTime < oldestFile.CreationTime)
                 oldestFile = fi;
         }
-        return oldestFile?.FullName ?? allCachedFiles[0];
+
+        var selected = oldestFile?.FullName ?? allCachedFiles[0];
+        return new CachedImage(selected, ResolveDetectionKey(selected));
+    }
+
+    /// <summary>
+    /// Recovers the stable detection key for a cached file.
+    ///
+    /// <para>
+    /// Downloaded cloud images are stored as <c>{sha256(remoteIdentifier)}{extension}</c>, so the
+    /// file-name stem is that hash and stays identical across download cycles — which is what lets
+    /// cached face detections survive the delete-after-apply behaviour. Local images keep their
+    /// own path as the key, since the path is already their stable identity.
+    /// </para>
+    /// </summary>
+    private static string ResolveDetectionKey(string filePath)
+    {
+        var stem = Path.GetFileNameWithoutExtension(filePath);
+        return ImageKey.IsKey(stem) ? stem.ToLowerInvariant() : filePath;
     }
 
     public Task RefillCacheQueueAsync(WallpaperCollection collection, int targetCacheCount = 10)
@@ -217,9 +253,14 @@ public class CloudCacheManager : ICacheManager
                 using var stream = await provider.DownloadImageStreamAsync(folder, chosenId);
                 if (stream == null) continue;
 
-                using var localStream = File.Create(targetPath);
-                await stream.CopyToAsync(localStream);
+                using (var localStream = File.Create(targetPath))
+                {
+                    await stream.CopyToAsync(localStream);
+                    // Flush before anything reads the file back; MediaPipe must see complete bytes.
+                    await localStream.FlushAsync();
+                }
 
+                await WarmAutoFramingAsync(targetPath, chosenId, collection);
                 EnforceCacheSizeLimit(cacheDir);
             }
             catch (Exception ex)
@@ -229,8 +270,39 @@ public class CloudCacheManager : ICacheManager
         }
     }
 
-    private void EnforceCacheSizeLimit(string cacheDir)
+    /// <summary>
+    /// Analyses a freshly downloaded cloud image for a face while it is still on disk beside its
+    /// remote identifier.
+    ///
+    /// <para>
+    /// This is the only moment the two are available together: the cached file is deleted after a
+    /// successful apply and re-downloaded under the same name later, so the stable detection key
+    /// (the remote identifier) has to be recorded now. Warming here also keeps inference out of the
+    /// apply path, so applying a wallpaper stays instant. Failures are non-fatal — the apply path
+    /// detects lazily on the local file if this produced nothing.
+    /// </para>
+    /// </summary>
+    private async Task WarmAutoFramingAsync(string filePath, string remoteIdentifier, WallpaperCollection collection)
     {
+        if (_autoFraming == null || string.IsNullOrEmpty(remoteIdentifier))
+            return;
+
+        try
+        {
+            var info = new FileInfo(filePath);
+            if (!info.Exists || info.Length < MinDetectableImageBytes)
+                return;
+
+            await _autoFraming.ResolveAsync(collection, filePath, remoteIdentifier, new ImageFramingConfig())
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Auto-framing warm-up skipped for {File}", Path.GetFileName(filePath));
+        }
+    }
+
+    private void EnforceCacheSizeLimit(string cacheDir)    {
         lock (_cacheSizeCheckLock)
         {
             var now = DateTime.UtcNow;

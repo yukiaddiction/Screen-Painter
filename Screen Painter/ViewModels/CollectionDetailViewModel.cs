@@ -57,6 +57,30 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
 
     public bool IsTimerVisible => CurrentCollection?.IsTimerEnabled == true;
 
+    /// <summary>
+    /// Per-collection smart auto-framing. Each wallpaper in this collection is analysed once for a
+    /// face and the placement is adjusted for the device's real screen before applying. Manual
+    /// per-image framing overrides always take priority over it.
+    /// </summary>
+    public bool IsAutoFramingEnabled
+    {
+        get => CurrentCollection?.AutoFramingEnabled == true;
+        set
+        {
+            if (CurrentCollection == null || CurrentCollection.AutoFramingEnabled == value)
+                return;
+
+            CurrentCollection.AutoFramingEnabled = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
+    /// Face detection ships only in the Android build, so the switch is hidden elsewhere rather
+    /// than offering a setting that could not do anything.
+    /// </summary>
+    public bool IsAutoFramingSupported => AppConstants.IsAutoFramingSupported;
+
     public bool HasSavedCloudAccounts
     {
         get => _hasSavedCloudAccounts;

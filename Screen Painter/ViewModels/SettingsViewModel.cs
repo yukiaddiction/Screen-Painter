@@ -23,6 +23,7 @@ public class SettingsViewModel : BaseViewModel
     private readonly LogService _logService;
     private readonly ILogger<SettingsViewModel> _logger;
     private readonly IUpdateCheckService _updateCheckService;
+    private readonly Screen_Painter.Services.Imaging.FaceDetectionCache _faceDetectionCache;
 
     public ObservableCollection<CloudAccount> CloudAccounts { get; } = new();
 
@@ -63,6 +64,36 @@ public class SettingsViewModel : BaseViewModel
                 Microsoft.Maui.Storage.Preferences.Default.Set(AppConstants.AutoUpdateCheckPreferenceKey, value);
         }
     }
+
+    private bool _isAutoFramingEnabledByDefault;
+    /// <summary>
+    /// Default smart auto-framing state applied to newly created collections. Each collection
+    /// carries its own switch, so this is a template rather than a global override.
+    /// </summary>
+    public bool IsAutoFramingEnabledByDefault
+    {
+        get => _isAutoFramingEnabledByDefault;
+        set
+        {
+            if (SetProperty(ref _isAutoFramingEnabledByDefault, value))
+                Microsoft.Maui.Storage.Preferences.Default.Set(AppConstants.AutoFramingPreferenceKey, value);
+        }
+    }
+
+    /// <summary>
+    /// Auto-framing needs on-device face detection, which only the Android target ships. Hiding the
+    /// switch elsewhere avoids offering a setting that cannot do anything.
+    /// </summary>
+    public bool IsAutoFramingSupported => AppConstants.IsAutoFramingSupported;
+
+    private string _autoFramingCacheSummary = string.Empty;
+    public string AutoFramingCacheSummary
+    {
+        get => _autoFramingCacheSummary;
+        set => SetProperty(ref _autoFramingCacheSummary, value);
+    }
+
+    public ICommand ClearAutoFramingCacheCommand { get; }
 
     private bool _isBatteryExempt;
     public bool IsBatteryExempt
@@ -105,7 +136,8 @@ public class SettingsViewModel : BaseViewModel
         IEnumerable<IStorageProvider> storageProviders,
         LogService logService,
         ILogger<SettingsViewModel> logger,
-        IUpdateCheckService updateCheckService)
+        IUpdateCheckService updateCheckService,
+        Screen_Painter.Services.Imaging.FaceDetectionCache faceDetectionCache)
     {
         _cloudAccountService = cloudAccountService;
         _secureStorage = secureStorage;
@@ -114,12 +146,15 @@ public class SettingsViewModel : BaseViewModel
         _logService = logService;
         _logger = logger;
         _updateCheckService = updateCheckService;
+        _faceDetectionCache = faceDetectionCache;
         Title = "Cloud Accounts & Settings";
 
         var themePref = Microsoft.Maui.Storage.Preferences.Default.Get(AppConstants.AppThemePreferenceKey, AppConstants.DefaultAppTheme);
         _isDarkMode = themePref == AppConstants.DarkThemeValue;
 
         _isAutoUpdateCheckEnabled = Microsoft.Maui.Storage.Preferences.Default.Get(AppConstants.AutoUpdateCheckPreferenceKey, true);
+        _isAutoFramingEnabledByDefault = Microsoft.Maui.Storage.Preferences.Default.Get(
+            AppConstants.AutoFramingPreferenceKey, AppConstants.AutoFramingEnabledByDefault);
 
         LoadAccountsCommand = new AsyncCommand(async () => await LoadAccountsAsync());
         AddWebDavAccountCommand = new AsyncCommand(async () => await AddWebDavAccountAsync());
@@ -131,10 +166,44 @@ public class SettingsViewModel : BaseViewModel
         CopyLogsCommand = new AsyncCommand(async () => await _logService.CopyLogsToClipboardAsync());
         CheckForUpdatesCommand = new AsyncCommand(async () => await CheckForUpdatesAsync());
         OpenGitHubCommand = new AsyncCommand(async () => await OpenGitHubAsync());
+        ClearAutoFramingCacheCommand = new AsyncCommand(async () => await ClearAutoFramingCacheAsync());
 
         LogSummary = _logService.GetLogSummary();
 
         CheckBatteryStatus();
+        _ = RefreshAutoFramingCacheSummaryAsync();
+    }
+
+    private async Task RefreshAutoFramingCacheSummaryAsync()
+    {
+        try
+        {
+            var count = await _faceDetectionCache.CountAsync();
+            AutoFramingCacheSummary = count == 0
+                ? "No wallpapers analysed yet. Each wallpaper is analysed once, on the device."
+                : $"{count} wallpaper{(count == 1 ? "" : "s")} analysed and remembered on this device.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read auto-framing cache summary");
+            AutoFramingCacheSummary = "Analysis history unavailable.";
+        }
+    }
+
+    private async Task ClearAutoFramingCacheAsync()
+    {
+        try
+        {
+            await _faceDetectionCache.ClearAsync();
+            await RefreshAutoFramingCacheSummaryAsync();
+            await ShellHelper.DisplayAlert("Analysis Cleared",
+                "Screen Painter will analyse wallpapers again the next time they are applied.", "OK");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to clear auto-framing cache");
+            await ShellHelper.DisplayAlert("Clear Failed", ex.Message, "OK");
+        }
     }
 
     public async Task LoadAccountsAsync()

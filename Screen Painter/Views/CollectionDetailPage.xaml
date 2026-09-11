@@ -220,6 +220,20 @@
                 </VerticalStackLayout>
             </Border>
 
+            <!-- Smart Auto-Framing (per collection) -->
+            <Border Style="{StaticResource SectionBorder}" IsVisible="{Binding IsAutoFramingSupported}">
+                <Grid ColumnDefinitions="*, Auto">
+                    <VerticalStackLayout Grid.Column="0" Spacing="{StaticResource MicroSpacing}">
+                        <Label Text="Smart Auto-Framing" Style="{StaticResource BodyBoldLabel}" 
+                               TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" />
+                        <Label Text="Finds the face and positions it for your screen when a wallpaper is applied. A per-image framing you set by hand still takes priority." 
+                               Style="{StaticResource SmallCaptionLabel}" />
+                    </VerticalStackLayout>
+                    <Switch Grid.Column="1" IsToggled="{Binding IsAutoFramingEnabled}" 
+                            Style="{StaticResource ThemedSwitch}" VerticalOptions="Center" />
+                </Grid>
+            </Border>
+
             <!-- Framing & Image Adjustments -->
             <Button Text="Adjust Picture Framing / Ratio" Command="{Binding EditFramingCommand}" Style="{StaticResource ActionButton}" HeightRequest="{StaticResource StandardButtonHeight}" />
 

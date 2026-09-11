@@ -57,14 +57,25 @@ public static class MauiProgram
         builder.Services.AddSingleton<IGalleryManifestStore, GalleryManifestStore>();
         builder.Services.AddSingleton<IUpdateCheckService, UpdateCheckService>();
 
+        // Smart auto-framing: face-aware placement resolved for the device's real screen.
+        builder.Services.AddSingleton(AppConstants.CreateAutoFramingOptions());
+        builder.Services.AddSingleton(sp => new FaceDetectionCache(
+            System.IO.Path.Combine(Microsoft.Maui.Storage.FileSystem.AppDataDirectory, "face_detections.json"),
+            sp.GetRequiredService<ILogger<FaceDetectionCache>>(),
+            System.TimeSpan.FromDays(Math.Max(1, AppConstants.AutoFramingCacheTtlDays)),
+            AppConstants.AutoFramingMaxCacheEntries));
+        builder.Services.AddSingleton<IAutoFramingService, AutoFramingService>();
+
         // Register Logging Services
         builder.Services.AddSingleton<LogService>();
 
         // Platform Wallpaper Service DI
 #if ANDROID
         builder.Services.AddSingleton<IWallpaperService, Platforms.Android.WallpaperServiceAndroid>();
+        builder.Services.AddSingleton<IFaceDetector, Platforms.Android.FaceDetectorAndroid>();
 #else
         builder.Services.AddSingleton<IWallpaperService, WallpaperServiceStandard>();
+        builder.Services.AddSingleton<IFaceDetector, FaceDetectorModel.Null>();
 #endif
 
         // Register ViewModels

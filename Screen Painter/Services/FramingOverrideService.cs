@@ -16,17 +16,19 @@ public interface IFramingOverrideService
     Task RemoveAllForCollectionAsync(string collectionId);
     Task PruneAsync(string collectionId, ISet<string> validKeys);
     Task<HashSet<string>> GetOverrideKeysAsync(string collectionId);
-    Task<ImageFramingConfig> ResolveFramingAsync(WallpaperCollection collection, string? imagePath);
+    Task<ImageFramingConfig> ResolveFramingAsync(WallpaperCollection collection, string? imagePath, string? detectionKey = null);
 }
 
 public class FramingOverrideService : JsonFileRepository, IFramingOverrideService
 {
     private List<ImageFramingOverride>? _cache;
     private readonly SemaphoreSlim _cacheLock = new(1, 1);
+    private readonly IAutoFramingService? _autoFraming;
 
-    public FramingOverrideService(ILoggerFactory loggerFactory)
+    public FramingOverrideService(ILoggerFactory loggerFactory, IAutoFramingService? autoFraming = null)
         : base("framing_overrides.json", loggerFactory)
     {
+        _autoFraming = autoFraming;
     }
 
     private async Task<List<ImageFramingOverride>> GetAllAsync()
@@ -141,17 +143,24 @@ public class FramingOverrideService : JsonFileRepository, IFramingOverrideServic
         return result;
     }
 
-    public async Task<ImageFramingConfig> ResolveFramingAsync(WallpaperCollection collection, string? imagePath)
+    public async Task<ImageFramingConfig> ResolveFramingAsync(WallpaperCollection collection, string? imagePath, string? detectionKey = null)
     {
+        var resolved = collection.FramingConfig ?? new ImageFramingConfig();
+
         if (!string.IsNullOrEmpty(imagePath))
         {
             var key = Imaging.ImageKey.ForPath(imagePath);
             var overrideConfig = await GetOverrideAsync(collection.Id, key).ConfigureAwait(false);
             if (overrideConfig != null)
-                return overrideConfig;
+                resolved = overrideConfig;
         }
 
-        return collection.FramingConfig ?? new ImageFramingConfig();
+        // Smart auto-framing only ever refines the placement. A hand-framed override arrives here
+        // as 'resolved' and is completed rather than discarded, so manual work always wins.
+        if (_autoFraming != null && !string.IsNullOrEmpty(imagePath))
+            return await _autoFraming.ResolveAsync(collection, imagePath, detectionKey, resolved).ConfigureAwait(false);
+
+        return resolved;
     }
 
     private void InvalidateCache()

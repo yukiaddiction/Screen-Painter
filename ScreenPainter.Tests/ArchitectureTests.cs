@@ -98,8 +98,18 @@ public class ArchitectureTests
     [Fact]
     public void ExtractedLogic_HasNoMauiOrAndroidDependencies()
     {
-        // RotationGate and SchedulePolicy must stay pure so they remain unit-testable off-device.
-        var logicTypes = new[] { typeof(RotationGate), typeof(SchedulePolicy) };
+        // RotationGate, SchedulePolicy and the auto-framing math must stay pure so they remain
+        // unit-testable off-device — and so the CI job that has no MAUI workload can compile them.
+        var logicTypes = new[]
+        {
+            typeof(RotationGate),
+            typeof(SchedulePolicy),
+            typeof(Screen_Painter.Services.Imaging.AutoFramingCalculator),
+            typeof(Screen_Painter.Services.Imaging.FaceDetectionCache),
+            typeof(Screen_Painter.Services.Imaging.FaceBox),
+            typeof(Screen_Painter.Services.Imaging.AutoFramingOptions),
+            typeof(Screen_Painter.Services.Imaging.WallpaperSurfaceSize)
+        };
 
         foreach (var type in logicTypes)
         {
@@ -109,6 +119,37 @@ public class ArchitectureTests
                 n.StartsWith("Mono.Android", StringComparison.OrdinalIgnoreCase) ||
                 n.Equals("Xamarin.AndroidX", StringComparison.OrdinalIgnoreCase));
         }
+    }
+
+    [Fact]
+    public void WallpaperCollection_AutoFramingIsPersistedWithAStableJsonName()
+    {
+        // Auto-framing is opt-in per collection, so the flag is part of collections.json. Dropping
+        // the attribute would silently change the on-disk contract.
+        var prop = typeof(WallpaperCollection).GetProperty(nameof(WallpaperCollection.AutoFramingEnabled));
+
+        Assert.NotNull(prop);
+        Assert.Equal(typeof(bool), prop!.PropertyType);
+
+        var jsonName = prop.GetCustomAttribute<JsonPropertyNameAttribute>();
+        Assert.NotNull(jsonName);
+        Assert.Equal("autoFramingEnabled", jsonName!.Name);
+
+        // Existing collections.json files predate the field, so it must default to off.
+        Assert.False((bool)prop.GetValue(new WallpaperCollection())!);
+    }
+
+    [Fact]
+    public void FaceDetectorModelVersion_IsPartOfTheCacheKey()
+    {
+        // Cached detections are only valid for the model that produced them; if this ever stops
+        // holding, a model swap would silently reuse stale face boxes.
+        var version = Screen_Painter.Services.Imaging.FaceDetectorModel.Version;
+        var v1 = Screen_Painter.Services.Imaging.FaceDetectionCache.BuildKey("img", 100, 200, version);
+        var v2 = Screen_Painter.Services.Imaging.FaceDetectionCache.BuildKey("img", 100, 200, version + "-next");
+
+        Assert.NotEqual(v1, v2);
+        Assert.Contains(version, v1);
     }
 
     [Fact]

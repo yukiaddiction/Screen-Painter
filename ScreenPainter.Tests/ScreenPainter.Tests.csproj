@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
@@ -12,6 +12,8 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <!-- The compile-linked services take ILogger, so the abstractions are needed to build them. -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.9" />
   </ItemGroup>
 
   <ItemGroup>
@@ -29,6 +31,12 @@
     <Compile Include="..\Screen Painter\Services\Scheduling\RotationGate.cs" />
     <Compile Include="..\Screen Painter\Services\Scheduling\SchedulePolicy.cs" />
     <Compile Include="..\Screen Painter\Services\Imaging\ImageKey.cs" />
+    <Compile Include="..\Screen Painter\Services\Imaging\FaceDetection.cs" />
+    <Compile Include="..\Screen Painter\Services\Imaging\AutoFramingOptions.cs" />
+    <Compile Include="..\Screen Painter\Services\Imaging\AutoFramingCalculator.cs" />
+    <Compile Include="..\Screen Painter\Services\Imaging\WallpaperSurfaceSize.cs" />
+    <Compile Include="..\Screen Painter\Services\Imaging\IFaceDetector.cs" />
+    <Compile Include="..\Screen Painter\Services\Imaging\FaceDetectionCache.cs" />
   </ItemGroup>
 
 </Project>

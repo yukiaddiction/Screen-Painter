@@ -54,4 +54,38 @@ public static class AppConstants
     public const string DarkThemeValue = "Dark";
     public const string LightThemeValue = "Light";
     public const string AutoUpdateCheckPreferenceKey = "AutoUpdateCheck";
+
+    // Smart Auto-Framing
+    public static bool AutoFramingEnabledByDefault => _settings.AutoFraming.EnabledByDefault;
+    public static int AutoFramingCacheTtlDays => _settings.AutoFraming.CacheTtlDays;
+    public static int AutoFramingMaxCacheEntries => _settings.AutoFraming.MaxCacheEntries;
+    public const string AutoFramingPreferenceKey = "AutoFramingEnabled";
+
+    /// <summary>
+    /// Face detection ships only in the Android build, because wallpaper management itself is
+    /// Android-only. The UI uses this to avoid offering a switch that could not do anything.
+    /// </summary>
+#if ANDROID
+    public const bool IsAutoFramingSupported = true;
+#else
+    public const bool IsAutoFramingSupported = false;
+#endif
+
+    /// <summary>
+    /// Builds the tunables handed to the detector and the framing math. Kept here so the whole
+    /// feature is driven by one appsettings section instead of constants spread across services.
+    /// </summary>
+    public static Services.Imaging.AutoFramingOptions CreateAutoFramingOptions() => new()
+    {
+        HeadTopRatio = _settings.AutoFraming.HeadTopRatio,
+        HorizontalSafeBand = _settings.AutoFraming.HorizontalSafeBand,
+        TorsoExtendRatio = _settings.AutoFraming.TorsoExtendRatio,
+        TopMarginRatio = _settings.AutoFraming.TopMarginRatio,
+        MinFaceAreaRatio = _settings.AutoFraming.MinFaceAreaRatio,
+        MinConfidence = _settings.AutoFraming.MinConfidence,
+        MaxUpscale = _settings.AutoFraming.MaxUpscale,
+        MaxPixels = _settings.AutoFraming.DetectionMaxPixels,
+        MinFaceSizeInModelPixels = _settings.AutoFraming.MinFaceSizeInModelPixels,
+        DetectionTimeoutMs = _settings.AutoFraming.DetectionTimeoutMs
+    };
 }

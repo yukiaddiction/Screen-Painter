@@ -10,6 +10,7 @@ public class AppSettings
     public AlarmSettings Alarm { get; set; } = new();
     public WakeLockSettings WakeLock { get; set; } = new();
     public GallerySettings Gallery { get; set; } = new();
+    public AutoFramingSettings AutoFraming { get; set; } = new();
     public ApplicationSettings App { get; set; } = new();
 }
 
@@ -72,4 +73,50 @@ public class ApplicationSettings
 {
     public string DefaultTheme { get; set; } = "Dark";
     public int PromptMaxLength { get; set; } = 500;
+}
+
+/// <summary>
+/// Smart auto-framing: face-aware wallpaper placement computed for the device's real screen.
+/// The numeric values feed <c>Screen_Painter.Services.Imaging.AutoFramingOptions</c>.
+/// </summary>
+public class AutoFramingSettings
+{
+    /// <summary>Default state for newly created collections; each collection can override it.</summary>
+    public bool EnabledByDefault { get; set; }
+
+    /// <summary>Where the top of the head lands vertically (0 = top edge, 1 = bottom).</summary>
+    public double HeadTopRatio { get; set; } = 0.12;
+
+    /// <summary>Half-width of the central band the face may occupy (0.30 = middle 60%).</summary>
+    public double HorizontalSafeBand { get; set; } = 0.30;
+
+    /// <summary>How far below the face the subject continues, as a multiple of face height.</summary>
+    public double TorsoExtendRatio { get; set; } = 2.4;
+
+    /// <summary>Guaranteed headroom above the face, as a fraction of screen height.</summary>
+    public double TopMarginRatio { get; set; } = 0.03;
+
+    /// <summary>Faces smaller than this fraction of the image are ignored as background.</summary>
+    public double MinFaceAreaRatio { get; set; } = 0.002;
+
+    /// <summary>Detection confidence floor.</summary>
+    public double MinConfidence { get; set; } = 0.5;
+
+    /// <summary>Cap on the aspect-preserving crop when enlarging, relative to the fill scale.</summary>
+    public double MaxUpscale { get; set; } = 2.0;
+
+    /// <summary>Long edge, in pixels, that an image is downscaled to before inference.</summary>
+    public int DetectionMaxPixels { get; set; } = 640;
+
+    /// <summary>Minimum accepted face box in inference pixels.</summary>
+    public int MinFaceSizeInModelPixels { get; set; } = 24;
+
+    /// <summary>Wall-clock ceiling for a single detection, in milliseconds.</summary>
+    public int DetectionTimeoutMs { get; set; } = 4000;
+
+    /// <summary>How long a cached detection stays valid, in days.</summary>
+    public int CacheTtlDays { get; set; } = 30;
+
+    /// <summary>Maximum number of cached detections kept on disk.</summary>
+    public int MaxCacheEntries { get; set; } = 2000;
 }

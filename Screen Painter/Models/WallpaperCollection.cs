@@ -97,6 +97,14 @@ public class WallpaperCollection : INotifyPropertyChanged
     public ImageFramingConfig FramingConfig { get => _framingConfig; set { if (_framingConfig != value) { _framingConfig = value; OnPropertyChanged(); } } }
     private ImageFramingConfig _framingConfig = new();
 
+    /// <summary>
+    /// When enabled, each wallpaper is analysed once for a face and the placement is adjusted for
+    /// the device's real screen before applying. A manual per-image override still takes priority.
+    /// </summary>
+    [JsonPropertyName("autoFramingEnabled")]
+    public bool AutoFramingEnabled { get => _autoFramingEnabled; set { if (_autoFramingEnabled != value) { _autoFramingEnabled = value; OnPropertyChanged(); } } }
+    private bool _autoFramingEnabled;
+
     [JsonIgnore]
     public string? PreviewImagePath { get => _previewImagePath; set { if (_previewImagePath != value) { _previewImagePath = value; OnPropertyChanged(); OnPropertyChanged(nameof(PreviewImageSource)); } } }
     private string? _previewImagePath;

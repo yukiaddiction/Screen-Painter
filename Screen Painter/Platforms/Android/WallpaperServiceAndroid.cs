@@ -81,7 +81,9 @@ public class WallpaperServiceAndroid : Services.Wallpaper.IWallpaperService
     /// (width &lt;= height). DisplayMetrics exposes the current orientation, which may
     /// be landscape while a landscape-locked app is in the foreground; wallpaper
     /// bitmaps must always be authored in portrait to match the launcher/lock-screen
-    /// wallpaper surface.
+    /// wallpaper surface. The normalization rule itself lives in
+    /// <see cref="Services.Imaging.WallpaperSurfaceSize"/> so the auto-framing math
+    /// resolves exactly the same surface this bitmap is authored for.
     /// </summary>
     private static (int width, int height) GetNaturalWallpaperSize(Context context)
     {
@@ -97,10 +99,11 @@ public class WallpaperServiceAndroid : Services.Wallpaper.IWallpaperService
 
         // Normalize to portrait so a landscape configuration cannot produce an
         // overflowing wallpaper bitmap.
-        if (width > height)
-            return (height, width);
+        var natural = Services.Imaging.WallpaperSurfaceSize.NormalizeToPortrait(width, height);
+        if (natural.width <= 0 || natural.height <= 0)
+            return (AppConstants.FallbackDisplayWidth, AppConstants.FallbackDisplayHeight);
 
-        return (width, height);
+        return natural;
     }
 
     private static void SetWallpaperOnManager(WallpaperManager wallpaperManager, Bitmap bitmap, TargetScreen targetScreen)

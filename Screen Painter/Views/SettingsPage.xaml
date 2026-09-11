@@ -122,6 +122,39 @@
                     </CollectionView.ItemTemplate>
                 </CollectionView>
 
+                <!-- Smart Auto-Framing Card -->
+                <Border Style="{StaticResource SectionBorder}" IsVisible="{Binding IsAutoFramingSupported}">
+                    <VerticalStackLayout Spacing="{StaticResource ItemSpacing}">
+                        <Label Text="Smart Auto-Framing" Style="{StaticResource SectionSubtitleLabel}" FontAttributes="Bold" 
+                               TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" />
+                        <Label Text="Analyses each wallpaper on this device to find the face, then positions it for your actual screen. Runs fully offline — no image ever leaves your phone." 
+                               Style="{StaticResource CaptionLabel}" />
+
+                        <!-- Default for newly created collections -->
+                        <Grid ColumnDefinitions="*, Auto">
+                            <VerticalStackLayout Grid.Column="0" Spacing="{StaticResource MicroSpacing}">
+                                <Label Text="Enable by default for new collections" VerticalOptions="Center"
+                                       Style="{StaticResource BodySmallLabel}" 
+                                       TextColor="{AppThemeBinding Light={StaticResource LightPrimaryText}, Dark={StaticResource DarkPrimaryText}}" />
+                                <Label Text="Each collection has its own switch; this only sets the starting value." 
+                                       Style="{StaticResource SmallCaptionLabel}" />
+                            </VerticalStackLayout>
+                            <Switch Grid.Column="1" IsToggled="{Binding IsAutoFramingEnabledByDefault}" 
+                                    Style="{StaticResource ThemedSwitch}" VerticalOptions="Center" />
+                        </Grid>
+
+                        <!-- What has been remembered so far -->
+                        <Label Text="{Binding AutoFramingCacheSummary}" Style="{StaticResource CaptionLabel}" FontAttributes="Italic" 
+                               TextColor="{AppThemeBinding Light={StaticResource LightSecondaryText}, Dark={StaticResource DarkSecondaryText}}" />
+
+                        <Button Text="Clear Analysis History" 
+                                Command="{Binding ClearAutoFramingCacheCommand}"
+                                Style="{StaticResource SecondaryButton}" 
+                                HeightRequest="{StaticResource SmallButtonHeight}" 
+                                HorizontalOptions="Start" />
+                    </VerticalStackLayout>
+                </Border>
+
                 <!-- About &amp; Updates Card -->
                 <Border Style="{StaticResource SectionBorder}">
                     <VerticalStackLayout Spacing="{StaticResource ItemSpacing}">
