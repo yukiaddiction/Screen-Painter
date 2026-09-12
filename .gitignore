@@ -61,3 +61,4 @@ nunit-*.xml
 
 # MAUI / build publish outputs
 [Pp]ublish/
+.aider*
