@@ -14,13 +14,13 @@ workflows:
           chmod +x dotnet-install.sh
           ./dotnet-install.sh --install-dir $DOTNET_PATH --channel 9.0
           echo "export PATH=$DOTNET_PATH:\$PATH" >> $CM_ENV
-      - name: Install .NET MAUI Workload
+      - name: Install .NET MAUI Android Workload
         script: |
           $DOTNET workload install maui-android
       - name: Build and Package APK
         script: |
           cd "Screen Painter"
-          $DOTNET publish -f net9.0-android -c Release -p:AndroidPackageFormat=apk
+          $DOTNET publish -f net9.0-android -c Release -p:TargetFrameworks=net9.0-android -p:AndroidPackageFormat=apk
     artifacts:
       - "Screen Painter/bin/Release/net9.0-android/*-Signed.apk"
       - "Screen Painter/bin/Release/net9.0-android/*.apk"
