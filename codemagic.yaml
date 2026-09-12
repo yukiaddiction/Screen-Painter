@@ -3,15 +3,24 @@ workflows:
     name: Build MAUI Android APK
     max_build_duration: 60
     instance_type: mac_mini_m2
+    environment:
+      vars:
+        DOTNET_PATH: $CM_BUILD_DIR/dotnet
+        DOTNET: $CM_BUILD_DIR/dotnet/dotnet
     scripts:
+      - name: Install .NET 9 SDK
+        script: |
+          wget https://dot.net/v1/dotnet-install.sh
+          chmod +x dotnet-install.sh
+          ./dotnet-install.sh --install-dir $DOTNET_PATH --channel 9.0
+          echo "export PATH=$DOTNET_PATH:\$PATH" >> $CM_ENV
       - name: Install .NET MAUI Workload
         script: |
-          dotnet workload install maui-android
+          $DOTNET workload install maui-android
       - name: Build and Package APK
         script: |
           cd "Screen Painter"
-          dotnet publish -f net8.0-android -c Release -p:AndroidPackageFormat=apk
+          $DOTNET publish -f net9.0-android -c Release -p:AndroidPackageFormat=apk
     artifacts:
-      - "Screen Painter/bin/Release/net8.0-android/*-Signed.apk"
-      - "Screen Painter/bin/Release/net8.0-android/*.apk"
-      
+      - "Screen Painter/bin/Release/net9.0-android/*-Signed.apk"
+      - "Screen Painter/bin/Release/net9.0-android/*.apk"
