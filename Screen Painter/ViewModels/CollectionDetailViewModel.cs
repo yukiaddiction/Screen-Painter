@@ -495,23 +495,26 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
     }
 
     private async Task AddSavedCloudAccountAsync()
+{
+    var accounts = await _cloudAccountService.GetAllAccountsAsync();
+    if (!accounts.Any())
     {
-        var accounts = await _cloudAccountService.GetAllAccountsAsync();
-        if (!accounts.Any())
-        {
-            await GoToSettingsAsync();
-            return;
-        }
-
-        string[] names = accounts.Select(a => $"{a.Name} ({a.Type})").ToArray();
-        string? choice = await ShellHelper.DisplayActionSheet("Select Saved Cloud Account", "Cancel", null, names);
-        if (string.IsNullOrEmpty(choice) || choice == "Cancel") return;
-
-        var selected = accounts.FirstOrDefault(a => $"{a.Name} ({a.Type})" == choice);
-        if (selected == null) return;
-
-        await ShellHelper.GoToAsync($"CloudFolderPickerPage?accountId={selected.Id}&serverUrl={Uri.EscapeDataString(selected.ServerUrl)}&type={selected.Type}&userKey={Uri.EscapeDataString(selected.EncryptedUsername)}&passKey={Uri.EscapeDataString(selected.EncryptedPasswordOrToken)}");
+        await GoToSettingsAsync();
+        return;
     }
+
+    string[] names = accounts.Select(a => $"{a.Name} ({a.Type})").ToArray();
+    string? choice = await ShellHelper.DisplayActionSheet("Select Saved Cloud Account", "Cancel", null, names);
+    if (string.IsNullOrEmpty(choice) || choice == "Cancel") return;
+
+    var selected = accounts.FirstOrDefault(a => $"{a.Name} ({a.Type})" == choice);
+    if (selected == null) return;
+
+    // CRITICAL FIX: Pass fresh encrypted keys from the CloudAccount, not from old folderSource.
+    // This ensures that if credentials were updated in Settings, the folder picker uses the
+    // new credentials instead of stale ones, preventing 401 Unauthorized errors.
+    await ShellHelper.GoToAsync($"CloudFolderPickerPage?accountId={selected.Id}&serverUrl={Uri.EscapeDataString(selected.ServerUrl)}&type={selected.Type}&userKey={Uri.EscapeDataString(selected.EncryptedUsername)}&passKey={Uri.EscapeDataString(selected.EncryptedPasswordOrToken)}");
+}
 
     private async Task GoToSettingsAsync()
     {
