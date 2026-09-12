@@ -1,0 +1,82 @@
+name: DeepSeek Code Fix
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  fix-code:
+    if: github.event.label.name == 'ai-fix'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Aider
+        run: python -m pip install aider-chat
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create working branch
+        run: |
+          BRANCH_NAME="ai-fix/issue-${{ github.event.issue.number }}"
+          git checkout -b "$BRANCH_NAME"
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+
+      - name: Run Aider with DeepSeek
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          aider \
+            --model deepseek/deepseek-chat \
+            --no-auto-commits \
+            --yes-always \
+            --message "${{ github.event.issue.title }}. Details: ${{ github.event.issue.body }}"
+
+      - name: Commit and Push Changes
+        id: commit_step
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            git add .
+            git commit -m "Fix for issue #${{ github.event.issue.number }}: ${{ github.event.issue.title }}"
+            git push origin "$BRANCH_NAME"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Open Pull Request
+        if: steps.commit_step.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --base main \
+            --head "$BRANCH_NAME" \
+            --title "AI Fix: ${{ github.event.issue.title }}" \
+            --body "Automated changes generated with DeepSeek to address #${{ github.event.issue.number }}."
+
+      - name: Comment on Issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ steps.commit_step.outputs.has_changes }}" == "true" ]; then
+            gh issue comment "${{ github.event.issue.number }}" --body "Done! A Pull Request has been opened for your review."
+          else
+            gh issue comment "${{ github.event.issue.number }}" --body "DeepSeek reviewed the request but made no file changes. Check instructions or prompt."
+          fi
