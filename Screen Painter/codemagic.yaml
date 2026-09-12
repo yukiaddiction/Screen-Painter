@@ -1,0 +1,17 @@
+workflows:
+  maui-android:
+    name: Build MAUI Android APK
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    scripts:
+      - name: Install .NET MAUI Workload
+        script: |
+          dotnet workload install maui-android
+      - name: Build and Package APK
+        script: |
+          cd "Screen Painter"
+          dotnet publish -f net8.0-android -c Release -p:AndroidPackageFormat=apk
+    artifacts:
+      - "Screen Painter/bin/Release/net8.0-android/*-Signed.apk"
+      - "Screen Painter/bin/Release/net8.0-android/*.apk"
+      
