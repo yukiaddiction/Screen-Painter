@@ -38,7 +38,7 @@ jobs:
           git checkout -b "$BRANCH_NAME"
           echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
-      - name: Run Aider with DeepSeek
+            - name: Run Aider with DeepSeek
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: |
@@ -46,7 +46,10 @@ jobs:
             --model deepseek/deepseek-chat \
             --no-auto-commits \
             --yes-always \
+            --auto-commits=false \
+            --map-tokens 2048 \
             --message "${{ github.event.issue.title }}. Details: ${{ github.event.issue.body }}"
+
 
       - name: Commit and Push Changes
         id: commit_step
