@@ -69,45 +69,56 @@ public class CloudFolderPickerViewModel : BaseViewModel, IQueryAttributable
     }
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)
+{
+    if (query.TryGetValue("serverUrl", out var urlObj) && urlObj is string url)
     {
-        if (query.TryGetValue("serverUrl", out var urlObj) && urlObj is string url)
-        {
-            _pendingFolderSource.PathOrUrl = Uri.UnescapeDataString(url);
-            CurrentUrl = _pendingFolderSource.PathOrUrl;
-        }
-
-        if (query.TryGetValue("type", out var typeObj) && typeObj is string typeStr)
-        {
-            if (Enum.TryParse<StorageType>(typeStr, out var parsed))
-                _pendingFolderSource.Type = parsed;
-        }
-
-        if (query.TryGetValue("userKey", out var userKeyObj) && userKeyObj is string userKey)
-        {
-            _pendingFolderSource.EncryptedUsername = userKey;
-        }
-
-        if (query.TryGetValue("passKey", out var passKeyObj) && passKeyObj is string passKey)
-        {
-            _pendingFolderSource.EncryptedPasswordOrToken = passKey;
-        }
-
-        // Trigger folder scan ONLY after all query parameters are fully populated!
-        if (!string.IsNullOrEmpty(CurrentUrl))
-        {
-            _ = MainThread.InvokeOnMainThreadAsync(async () =>
-            {
-                try
-                {
-                    await LoadFoldersAsync(CurrentUrl);
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[CloudFolderPicker Load Error]: {ex}");
-                }
-            });
-        }
+        _pendingFolderSource.PathOrUrl = Uri.UnescapeDataString(url);
+        CurrentUrl = _pendingFolderSource.PathOrUrl;
     }
+
+    if (query.TryGetValue("type", out var typeObj) && typeObj is string typeStr)
+    {
+        if (Enum.TryParse<StorageType>(typeStr, out var parsed))
+            _pendingFolderSource.Type = parsed;
+    }
+
+    if (query.TryGetValue("userKey", out var userKeyObj) && userKeyObj is string userKey)
+    {
+        _pendingFolderSource.EncryptedUsername = userKey;
+    }
+
+    if (query.TryGetValue("passKey", out var passKeyObj) && passKeyObj is string passKey)
+    {
+        _pendingFolderSource.EncryptedPasswordOrToken = passKey;
+    }
+
+    // SECURITY FIX: Validate that we have fresh credentials before attempting to load.
+    // If credentials are missing or stale, fail fast to avoid silent 401 errors during
+    // folder listing. This ensures folder picker always uses up-to-date credentials
+    // from the cloud account service.
+    if (string.IsNullOrEmpty(_pendingFolderSource.EncryptedUsername) || 
+        string.IsNullOrEmpty(_pendingFolderSource.EncryptedPasswordOrToken))
+    {
+        StatusMessage = "⚠ Credentials not provided. Please select a cloud account again.";
+        return;
+    }
+
+    // Trigger folder scan ONLY after all query parameters are fully populated!
+    if (!string.IsNullOrEmpty(CurrentUrl))
+    {
+        _ = MainThread.InvokeOnMainThreadAsync(async () =>
+        {
+            try
+            {
+                await LoadFoldersAsync(CurrentUrl);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CloudFolderPicker Load Error]: {ex}");
+            }
+        });
+    }
+}
 
     public async Task RunDiagnosticsAsync()
     {
