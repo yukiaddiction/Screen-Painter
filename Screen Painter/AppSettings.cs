@@ -87,20 +87,23 @@ public class AutoFramingSettings
     /// <summary>Where the top of the head lands vertically (0 = top edge, 1 = bottom).</summary>
     public double HeadTopRatio { get; set; } = 0.12;
 
-    /// <summary>Half-width of the central band the face may occupy (0.30 = middle 60%).</summary>
-    public double HorizontalSafeBand { get; set; } = 0.30;
-
     /// <summary>How far below the face the subject continues, as a multiple of face height.</summary>
     public double TorsoExtendRatio { get; set; } = 2.4;
 
-    /// <summary>Share of the screen height the primary face should end up occupying.</summary>
+    /// <summary>Share of the screen height the subject's face should end up occupying.</summary>
     public double TargetFaceHeightRatio { get; set; } = 0.24;
+
+    /// <summary>
+    /// Share of the source covering the screen must have kept before a tighter crop is allowed, and
+    /// the inverse of the ceiling on that crop.
+    /// </summary>
+    public double MinVisibleAreaFraction { get; set; } = 0.80;
+
+    /// <summary>How large a face must be, relative to the largest one, to join the subject group.</summary>
+    public double RelativeFaceAreaRatio { get; set; } = 0.40;
 
     /// <summary>Guaranteed headroom above the face, as a fraction of screen height.</summary>
     public double TopMarginRatio { get; set; } = 0.03;
-
-    /// <summary>Faces smaller than this fraction of the image are ignored as background.</summary>
-    public double MinFaceAreaRatio { get; set; } = 0.002;
 
     /// <summary>Detection confidence floor.</summary>
     public double MinConfidence { get; set; } = 0.5;

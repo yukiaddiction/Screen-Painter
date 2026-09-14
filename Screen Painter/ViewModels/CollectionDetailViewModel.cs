@@ -246,13 +246,29 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
         {
             if (folder != null)
             {
-                if (!FolderSources.Any(f => string.Equals(f.PathOrUrl, folder.PathOrUrl, StringComparison.OrdinalIgnoreCase)))
+                var existing = FolderSources.FirstOrDefault(f => string.Equals(f.PathOrUrl, folder.PathOrUrl, StringComparison.OrdinalIgnoreCase));
+
+                if (existing == null)
                 {
                     FolderSources.Add(folder);
                     CurrentCollection.Folders = FolderSources.ToList();
                     _ = SaveCollectionSafeAsync();
 
                     FolderSelectionStatusMessage = $"✓ Cloud Folder Added: {folder.Name}";
+                }
+                else if (!string.Equals(existing.EncryptedUsername, folder.EncryptedUsername, StringComparison.Ordinal) ||
+                         !string.Equals(existing.EncryptedPasswordOrToken, folder.EncryptedPasswordOrToken, StringComparison.Ordinal))
+                {
+                    // The same path was picked again with different credentials. Refresh the
+                    // stored envelope instead of dropping it, otherwise the collection keeps
+                    // using the old credentials and downloads keep failing with HTTP 401.
+                    existing.EncryptedUsername = folder.EncryptedUsername;
+                    existing.EncryptedPasswordOrToken = folder.EncryptedPasswordOrToken;
+                    existing.Type = folder.Type;
+                    CurrentCollection.Folders = FolderSources.ToList();
+                    _ = SaveCollectionSafeAsync();
+
+                    FolderSelectionStatusMessage = $"✓ Cloud Folder Updated: {existing.Name}";
                 }
             }
         }
@@ -495,26 +511,28 @@ public class CollectionDetailViewModel : BaseViewModel, IQueryAttributable
     }
 
     private async Task AddSavedCloudAccountAsync()
-{
-    var accounts = await _cloudAccountService.GetAllAccountsAsync();
-    if (!accounts.Any())
     {
-        await GoToSettingsAsync();
-        return;
+        var accounts = await _cloudAccountService.GetAllAccountsAsync();
+        if (!accounts.Any())
+        {
+            await GoToSettingsAsync();
+            return;
+        }
+
+        // Two accounts created with the same name produce identical labels, which made the
+        // action sheet ambiguous and let an old record win the lookup below. The short id
+        // keeps every entry selectable.
+        string[] names = accounts.Select(CloudAccountResolver.DescribeForSelection).ToArray();
+        string? choice = await ShellHelper.DisplayActionSheet("Select Saved Cloud Account", "Cancel", null, names);
+        if (string.IsNullOrEmpty(choice) || choice == "Cancel") return;
+
+        var selected = accounts.FirstOrDefault(a => CloudAccountResolver.DescribeForSelection(a) == choice);
+        if (selected == null) return;
+
+        // Only the account id travels on the route. The picker re-reads the account record,
+        // so credentials edited in Settings always reach the folder browser.
+        await ShellHelper.GoToAsync($"CloudFolderPickerPage?accountId={Uri.EscapeDataString(selected.Id)}");
     }
-
-    string[] names = accounts.Select(a => $"{a.Name} ({a.Type})").ToArray();
-    string? choice = await ShellHelper.DisplayActionSheet("Select Saved Cloud Account", "Cancel", null, names);
-    if (string.IsNullOrEmpty(choice) || choice == "Cancel") return;
-
-    var selected = accounts.FirstOrDefault(a => $"{a.Name} ({a.Type})" == choice);
-    if (selected == null) return;
-
-    // CRITICAL FIX: Pass fresh encrypted keys from the CloudAccount, not from old folderSource.
-    // This ensures that if credentials were updated in Settings, the folder picker uses the
-    // new credentials instead of stale ones, preventing 401 Unauthorized errors.
-    await ShellHelper.GoToAsync($"CloudFolderPickerPage?accountId={selected.Id}&serverUrl={Uri.EscapeDataString(selected.ServerUrl)}&type={selected.Type}&userKey={Uri.EscapeDataString(selected.EncryptedUsername)}&passKey={Uri.EscapeDataString(selected.EncryptedPasswordOrToken)}");
-}
 
     private async Task GoToSettingsAsync()
     {

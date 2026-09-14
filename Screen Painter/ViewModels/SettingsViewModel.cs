@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -32,6 +32,7 @@ public class SettingsViewModel : BaseViewModel
     public ICommand AddOAuthAccountCommand { get; }
     public ICommand DeleteAccountCommand { get; }
     public ICommand TestWebDavAccountCommand { get; }
+    public ICommand EditAccountCommand { get; }
     public ICommand RequestBatteryExemptionCommand { get; }
     public ICommand ViewLogsCommand { get; }
     public ICommand CopyLogsCommand { get; }
@@ -161,6 +162,7 @@ public class SettingsViewModel : BaseViewModel
         AddOAuthAccountCommand = new AsyncCommand(async () => await AddOAuthAccountAsync());
         DeleteAccountCommand = new AsyncCommand<CloudAccount>(async (a) => await DeleteAccountAsync(a));
         TestWebDavAccountCommand = new AsyncCommand<CloudAccount>(async (a) => await TestWebDavAccountAsync(a));
+        EditAccountCommand = new AsyncCommand<CloudAccount>(async (a) => await EditAccountAsync(a));
         RequestBatteryExemptionCommand = new AsyncCommand(async () => await RequestBatteryExemptionAsync());
         ViewLogsCommand = new AsyncCommand(async () => await ShellHelper.GoToAsync(nameof(Views.LogViewerPage)));
         CopyLogsCommand = new AsyncCommand(async () => await _logService.CopyLogsToClipboardAsync());
@@ -308,6 +310,59 @@ public class SettingsViewModel : BaseViewModel
         await _cloudAccountService.SaveAccountAsync(account);
         CloudAccounts.Add(account);
         _logger.LogInformation("WebDAV account created — name: {Name}, url: {Url}", account.Name, account.ServerUrl);
+    }
+
+    /// <summary>
+    /// Updates an existing account in place. Adding a second account with the same name used to
+    /// be the only way to fix credentials: it left two indistinguishable records behind and the
+    /// folder picker could keep resolving the stale one. Reusing the Id makes the save below an
+    /// in-place replace, so every collection that points at this account picks up the new
+    /// credentials.
+    /// </summary>
+    private async Task EditAccountAsync(CloudAccount? account)
+    {
+        if (account == null) return;
+
+        string? name = await ShellHelper.DisplayPromptAsync("Edit Account", "Account Name:", initialValue: account.Name);
+        if (string.IsNullOrEmpty(name)) return;
+
+        string? url = await ShellHelper.DisplayPromptAsync("Edit Account", "Server URL:", initialValue: account.ServerUrl);
+        if (string.IsNullOrEmpty(url)) return;
+
+        string credentialLabel = account.Type == StorageType.OAuthCloud ? "Access Token or Auth Key:" : "Password:";
+        string? credential = await ShellHelper.DisplayPromptAsync(
+            "Edit Account",
+            $"Enter new {credentialLabel} Leave empty to keep the current one.",
+            keyboard: Keyboard.Password);
+
+        // Null means "keep the envelope already stored on the account".
+        string? encryptedPasswordOrToken = null;
+
+        if (!string.IsNullOrEmpty(credential))
+        {
+            // Same envelope format for a password and for an OAuth token, so one write covers both.
+            encryptedPasswordOrToken = await _secureStorage.EncryptAndSaveAsync(Guid.NewGuid().ToString(), credential);
+
+            if (string.IsNullOrEmpty(encryptedPasswordOrToken))
+            {
+                await ShellHelper.DisplayAlert("Security Error", "Failed to encrypt the new credential. The account was not changed.", "OK");
+                return;
+            }
+        }
+
+        var updated = CloudAccountResolver.ApplyEdit(account, name, url, encryptedPasswordOrToken);
+
+        await _cloudAccountService.SaveAccountAsync(updated);
+
+        var index = CloudAccounts.IndexOf(account);
+        if (index >= 0)
+            CloudAccounts[index] = updated;
+
+        _logger.LogInformation("Cloud account updated — name: {Name}, url: {Url}", updated.Name, updated.ServerUrl);
+
+        await ShellHelper.DisplayAlert("Account Updated",
+            $"'{updated.Name}' now uses the saved credentials. Collections already using it will pick them up on the next access.",
+            "OK");
     }
 
     private async Task AddOAuthAccountAsync()

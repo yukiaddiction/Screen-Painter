@@ -109,6 +109,9 @@
                                     </VerticalStackLayout>
 
                                     <HorizontalStackLayout Grid.Column="1" Spacing="{StaticResource CompactSpacing}" VerticalOptions="Center">
+                                        <Button x:DataType="{x:Null}" Text="Edit" 
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:SettingsViewModel}}, Path=EditAccountCommand}" 
+                                                CommandParameter="{Binding .}" Style="{StaticResource SecondaryButton}" HeightRequest="{StaticResource SmallButtonHeight}" />
                                         <Button x:DataType="{x:Null}" Text="Test" 
                                                 Command="{Binding Source={RelativeSource AncestorType={x:Type vm:SettingsViewModel}}, Path=TestWebDavAccountCommand}" 
                                                 CommandParameter="{Binding .}" Style="{StaticResource InlinePrimaryButton}" />

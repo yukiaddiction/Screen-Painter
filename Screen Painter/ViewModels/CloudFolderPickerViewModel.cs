@@ -15,6 +15,7 @@ public class CloudFolderPickerViewModel : BaseViewModel, IQueryAttributable
 {
     private readonly IEnumerable<IStorageProvider> _storageProviders;
     private readonly ISecureStorageService _secureStorage;
+    private readonly ICloudAccountService _cloudAccountService;
     private readonly WebDavStorageProvider _webDavTester;
 
     private FolderSource _pendingFolderSource = new();
@@ -54,10 +55,12 @@ public class CloudFolderPickerViewModel : BaseViewModel, IQueryAttributable
 
     public CloudFolderPickerViewModel(
         IEnumerable<IStorageProvider> storageProviders,
-        ISecureStorageService secureStorage)
+        ISecureStorageService secureStorage,
+        ICloudAccountService cloudAccountService)
     {
         _storageProviders = storageProviders;
         _secureStorage = secureStorage;
+        _cloudAccountService = cloudAccountService;
         _webDavTester = storageProviders.OfType<WebDavStorageProvider>().First()
             ?? throw new InvalidOperationException("WebDavStorageProvider not registered in DI");
         Title = "Browse Cloud Directory";
@@ -69,48 +72,13 @@ public class CloudFolderPickerViewModel : BaseViewModel, IQueryAttributable
     }
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)
-{
-    if (query.TryGetValue("serverUrl", out var urlObj) && urlObj is string url)
     {
-        _pendingFolderSource.PathOrUrl = Uri.UnescapeDataString(url);
-        CurrentUrl = _pendingFolderSource.PathOrUrl;
-    }
-
-    if (query.TryGetValue("type", out var typeObj) && typeObj is string typeStr)
-    {
-        if (Enum.TryParse<StorageType>(typeStr, out var parsed))
-            _pendingFolderSource.Type = parsed;
-    }
-
-    if (query.TryGetValue("userKey", out var userKeyObj) && userKeyObj is string userKey)
-    {
-        _pendingFolderSource.EncryptedUsername = userKey;
-    }
-
-    if (query.TryGetValue("passKey", out var passKeyObj) && passKeyObj is string passKey)
-    {
-        _pendingFolderSource.EncryptedPasswordOrToken = passKey;
-    }
-
-    // SECURITY FIX: Validate that we have fresh credentials before attempting to load.
-    // If credentials are missing or stale, fail fast to avoid silent 401 errors during
-    // folder listing. This ensures folder picker always uses up-to-date credentials
-    // from the cloud account service.
-    if (string.IsNullOrEmpty(_pendingFolderSource.EncryptedUsername) || 
-        string.IsNullOrEmpty(_pendingFolderSource.EncryptedPasswordOrToken))
-    {
-        StatusMessage = "⚠ Credentials not provided. Please select a cloud account again.";
-        return;
-    }
-
-    // Trigger folder scan ONLY after all query parameters are fully populated!
-    if (!string.IsNullOrEmpty(CurrentUrl))
-    {
+        // Trigger the folder scan ONLY after the credentials have been resolved.
         _ = MainThread.InvokeOnMainThreadAsync(async () =>
         {
             try
             {
-                await LoadFoldersAsync(CurrentUrl);
+                await PrepareAndLoadFoldersAsync(query);
             }
             catch (Exception ex)
             {
@@ -118,7 +86,31 @@ public class CloudFolderPickerViewModel : BaseViewModel, IQueryAttributable
             }
         });
     }
-}
+
+    /// <summary>
+    /// Resolves the credentials to use, preferring the current cloud account record over the
+    /// snapshot that was captured when the route was built, then lists the folder.
+    /// </summary>
+    private async Task PrepareAndLoadFoldersAsync(IDictionary<string, object> query)
+    {
+        var accounts = await _cloudAccountService.GetAllAccountsAsync();
+        var resolved = CloudAccountResolver.Resolve(query, accounts, out var statusMessage, out var errorMessage);
+
+        if (resolved == null)
+        {
+            StatusMessage = errorMessage ?? "⚠ Could not resolve the cloud account.";
+            return;
+        }
+
+        _pendingFolderSource = resolved;
+        CurrentUrl = resolved.PathOrUrl;
+        StatusMessage = statusMessage;
+
+        if (!string.IsNullOrEmpty(CurrentUrl))
+        {
+            await LoadFoldersAsync(CurrentUrl);
+        }
+    }
 
     public async Task RunDiagnosticsAsync()
     {

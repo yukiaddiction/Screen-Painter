@@ -78,11 +78,11 @@ public static class AppConstants
     public static Services.Imaging.AutoFramingOptions CreateAutoFramingOptions() => new()
     {
         HeadTopRatio = _settings.AutoFraming.HeadTopRatio,
-        HorizontalSafeBand = _settings.AutoFraming.HorizontalSafeBand,
-        TargetFaceHeightRatio = _settings.AutoFraming.TargetFaceHeightRatio,
+        MinVisibleAreaFraction = _settings.AutoFraming.MinVisibleAreaFraction,
+        RelativeFaceAreaRatio = _settings.AutoFraming.RelativeFaceAreaRatio,
         TorsoExtendRatio = _settings.AutoFraming.TorsoExtendRatio,
+        TargetFaceHeightRatio = _settings.AutoFraming.TargetFaceHeightRatio,
         TopMarginRatio = _settings.AutoFraming.TopMarginRatio,
-        MinFaceAreaRatio = _settings.AutoFraming.MinFaceAreaRatio,
         MinConfidence = _settings.AutoFraming.MinConfidence,
         MaxUpscale = _settings.AutoFraming.MaxUpscale,
         MaxPixels = _settings.AutoFraming.DetectionMaxPixels,
