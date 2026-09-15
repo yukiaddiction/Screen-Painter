@@ -1,11 +1,12 @@
 namespace Screen_Painter.Services.Imaging;
 
 /// <summary>
-/// Tunables for smart auto-framing. The defaults encode the agreed composition rule: the subject
-/// is framed as a group — every face of a comparable size, not just the largest — with its head
-/// biased into the upper third, and the crop is bounded so that a picture whose shape is already
-/// close to the phone's is nudged rather than re-composed. Every value is overridable from the
-/// "AutoFraming" appsettings section.
+/// Tunables for smart auto-framing. The defaults encode the agreed composition rule: a picture
+/// that is already the phone's size or shape is applied untouched, and anything else is framed by
+/// panning the plain fill crop — never by cropping into it. The subject is framed as a group —
+/// every face of a comparable size, not just the largest — and the frame moves only as far as the
+/// subject's own position requires. Every value is overridable from the "AutoFraming" appsettings
+/// section.
 /// </summary>
 public class AutoFramingOptions
 {
@@ -17,9 +18,23 @@ public class AutoFramingOptions
     public const int PreferredDecodeLongEdge = 640;
 
     /// <summary>
-    /// Where the top of the subject band should land vertically (0 = top edge, 1 = bottom).
+    /// How close to a screen side edge the subject may sit before the picture is panned
+    /// horizontally, as a fraction of target width. Inside this band the picture is not moved at
+    /// all, which is what keeps a picture the photographer already framed well untouched.
     /// </summary>
-    public double HeadTopRatio { get; set; } = 0.12;
+    public double EdgeMarginRatio { get; set; } = 0.05;
+
+    /// <summary>
+    /// How close the source's pixel size must be to the wallpaper surface, in each dimension, to
+    /// count as already being the phone's own size and be applied with no framing at all.
+    /// </summary>
+    public double SizeToleranceRatio { get; set; } = 0.20;
+
+    /// <summary>
+    /// How close the source's aspect ratio must be to the surface's for the plain fill crop to be a
+    /// pure uniform downscale, which also needs no framing at all.
+    /// </summary>
+    public double ShapeToleranceRatio { get; set; } = 0.03;
 
     /// <summary>
     /// How far below the face the subject is assumed to continue — head, shoulders and any held
@@ -28,27 +43,12 @@ public class AutoFramingOptions
     /// </summary>
     public double TorsoExtendRatio { get; set; } = 2.4;
 
-    /// <summary>Guaranteed headroom above the detected face, as a fraction of target height.</summary>
+    /// <summary>
+    /// Guaranteed headroom above the detected face, as a fraction of target height. This is also
+    /// the vertical trigger: the picture is moved up or down only once the head comes closer to the
+    /// top of the screen than this.
+    /// </summary>
     public double TopMarginRatio { get; set; } = 0.03;
-
-    /// <summary>
-    /// The share of the screen height the subject's face should occupy after framing. This is what
-    /// asks for a crop at all: a face smaller than this is enlarged toward it, so a distant or
-    /// full-body subject is framed rather than left as a speck on a 20:9 surface.
-    /// <see cref="MinVisibleAreaFraction"/> is what keeps that request from being granted at any
-    /// cost, and <see cref="MaxUpscale"/> is the hard ceiling under both.
-    /// </summary>
-    public double TargetFaceHeightRatio { get; set; } = 0.24;
-
-    /// <summary>
-    /// The share of the source the plain fill crop must have kept before a tighter crop is allowed
-    /// at all, and the inverse is the ceiling on that crop. Covering a phone screen with a 3:4
-    /// photo already discards a quarter of its width and three quarters of its area; this is what
-    /// stops auto-framing from spending the rest of the composition on top of that. A source wide
-    /// enough that the fill has already reduced it to a narrow slice has nothing left to protect,
-    /// so only <see cref="MaxUpscale"/> applies there.
-    /// </summary>
-    public double MinVisibleAreaFraction { get; set; } = 0.80;
 
     /// <summary>
     /// How large a face must be, relative to the largest one, to count as part of the subject
@@ -60,14 +60,6 @@ public class AutoFramingOptions
 
     /// <summary>Detections below this confidence are discarded.</summary>
     public double MinConfidence { get; set; } = 0.5;
-
-    /// <summary>
-    /// Hard cap on the aspect-preserving crop when enlarging, relative to the plain fill scale.
-    /// Stops a distant face from being blown up into mush on a long phone screen. 1.35x keeps a
-    /// typical landscape source's subjects at roughly a fifth of the screen height, which reads as
-    /// a wallpaper rather than a passport photo.
-    /// </summary>
-    public double MaxUpscale { get; set; } = 1.35;
 
     /// <summary>Long edge, in pixels, that the image is downscaled to before inference.</summary>
     public int MaxPixels { get; set; } = 640;

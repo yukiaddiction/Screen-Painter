@@ -33,17 +33,20 @@ public class AutoFramingService : IAutoFramingService
 {
     private readonly IFaceDetector _detector;
     private readonly FaceDetectionCache _cache;
+    private readonly IThumbnailService _thumbnailService;
     private readonly AutoFramingOptions _options;
     private readonly ILogger<AutoFramingService> _logger;
 
     public AutoFramingService(
         IFaceDetector detector,
         FaceDetectionCache cache,
+        IThumbnailService thumbnailService,
         AutoFramingOptions options,
         ILogger<AutoFramingService> logger)
     {
         _detector = detector;
         _cache = cache;
+        _thumbnailService = thumbnailService;
         _options = options;
         _logger = logger;
     }
@@ -72,6 +75,16 @@ public class AutoFramingService : IAutoFramingService
             DeviceDisplaySize.width, DeviceDisplaySize.height);
 
         if (surface.width <= 0 || surface.height <= 0)
+            return config;
+
+        // The cheap gate in front of the detector. A picture that is already the phone's size or
+        // shape needs no analysis: the plain fill crop is already the right answer, and the crop
+        // auto-framing could offer on top of it would be spent picture. Deciding this from the file
+        // header alone keeps the detector out of the common case entirely.
+        //
+        // A picture whose dimensions cannot be read falls through to detection, which is always
+        // safe — this gate only ever skips work, it never decides placement.
+        if (ShouldKeepUnframed(imagePath, surface))
             return config;
 
         try
@@ -114,6 +127,42 @@ public class AutoFramingService : IAutoFramingService
             _logger.LogWarning(ex, "Auto-framing failed for {File}, falling back to manual framing",
                 System.IO.Path.GetFileName(imagePath));
             return config;
+        }
+    }
+
+    /// <summary>
+    /// True when the picture is already the phone's own size or shape, so it should be applied
+    /// exactly as it is. Reads only the file header — no decode, no inference — and reports
+    /// <c>false</c> whenever the dimensions cannot be established, so an unreadable file is
+    /// analysed rather than silently left alone.
+    /// </summary>
+    private bool ShouldKeepUnframed(string imagePath, (int width, int height) surface)
+    {
+        try
+        {
+            var source = _thumbnailService.GetImageDimensions(imagePath);
+            if (source == null)
+                return false;
+
+            var decision = AutoFramingGate.Classify(
+                source.Value.Width, source.Value.Height,
+                surface.width, surface.height,
+                _options);
+
+            if (decision == AutoFramingDecision.NeedsFraming)
+                return false;
+
+            _logger.LogDebug(
+                "Auto-framing skipped ({Decision}) — source {W}x{H} already suits surface {SW}x{SH}",
+                decision, source.Value.Width, source.Value.Height, surface.width, surface.height);
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Auto-framing source probe failed for {File}, analysing instead",
+                System.IO.Path.GetFileName(imagePath));
+            return false;
         }
     }
 

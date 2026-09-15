@@ -105,6 +105,7 @@ public class ArchitectureTests
             typeof(RotationGate),
             typeof(SchedulePolicy),
             typeof(Screen_Painter.Services.Imaging.AutoFramingCalculator),
+            typeof(Screen_Painter.Services.Imaging.AutoFramingGate),
             typeof(Screen_Painter.Services.Imaging.FaceDetectionCache),
             typeof(Screen_Painter.Services.Imaging.FaceBox),
             typeof(Screen_Painter.Services.Imaging.AutoFramingOptions),

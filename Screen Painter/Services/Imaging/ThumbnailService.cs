@@ -87,11 +87,21 @@ public class ThumbnailService : IThumbnailService
 #if ANDROID
         try
         {
-            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+            if (string.IsNullOrEmpty(path))
                 return null;
 
             var boundsOptions = new Android.Graphics.BitmapFactory.Options { InJustDecodeBounds = true };
-            Android.Graphics.BitmapFactory.DecodeFile(path, boundsOptions);
+
+            // A local picture arrives either as a real filesystem path or as a content:// URI from
+            // the system picker, and only the path form can be handed to DecodeFile. Reading the
+            // header off a stream covers both, and stays bounds-only so no pixels are decoded.
+            using (var stream = OpenReadStream(path))
+            {
+                if (stream == null)
+                    return null;
+
+                Android.Graphics.BitmapFactory.DecodeStream(stream, null, boundsOptions);
+            }
 
             if (boundsOptions.OutWidth > 0 && boundsOptions.OutHeight > 0)
                 return (boundsOptions.OutWidth, boundsOptions.OutHeight);
@@ -106,6 +116,34 @@ public class ThumbnailService : IThumbnailService
         return null;
 #endif
     }
+
+#if ANDROID
+    /// <summary>
+    /// Opens a picture for header-only reading, whichever form its identifier takes. Returns
+    /// <c>null</c> rather than throwing, so callers treat an unreadable picture as "unknown size".
+    /// </summary>
+    private static Stream? OpenReadStream(string path)
+    {
+        try
+        {
+            if (path.StartsWith("content://", StringComparison.OrdinalIgnoreCase))
+            {
+                var context = Android.App.Application.Context;
+                var uri = Android.Net.Uri.Parse(path);
+                if (uri != null && context?.ContentResolver != null)
+                    return context.ContentResolver.OpenInputStream(uri);
+            }
+
+            if (File.Exists(path))
+                return File.OpenRead(path);
+        }
+        catch
+        {
+        }
+
+        return null;
+    }
+#endif
 
     public Task<string?> GetOrCreateThumbnailAsync(FolderSource folder, string identifier, CancellationToken ct = default)
     {

@@ -13,13 +13,26 @@ namespace Screen_Painter.Services.Imaging;
 /// <c>config.Scale</c>, then centres the result and adds <c>OffsetX</c>/<c>OffsetY</c>. This
 /// calculator inverts that relationship, so it can return placement without touching the service.
 ///
+/// <para>
+/// The crop is <b>pan-only</b>. The plain fill scale — the smallest scale that still covers the
+/// surface — is both the floor and the ceiling, so the picture is never enlarged into a tighter
+/// crop and never reduced into a letterbox. What is left is placement: the frame slides over the
+/// picture to follow the subject, and every pixel the photographer shot stays in the result.
+/// A tighter crop is not available as a solution to any framing problem, which is the point —
+/// it is lossy, and it was being spent on pictures that did not need it.
+/// </para>
+///
+/// <para>
 /// The subject is a <em>band</em>: the union of every detected face that counts as a subject,
 /// extended below the tallest face to cover the head-and-torso read. Framing from a group rather
 /// than from one face is what keeps a picture with two characters from being cropped onto one of
 /// them.
+/// </para>
 ///
+/// <para>
 /// Contains no MAUI, Android or I/O dependency, so it is compile-linked into the unit test
 /// assembly and exercised directly (see <c>ArchitectureTests.ExtractedLogic_HasNoMauiOrAndroidDependencies</c>).
+/// </para>
 /// </summary>
 public static class AutoFramingCalculator
 {
@@ -35,9 +48,6 @@ public static class AutoFramingCalculator
         public double Right { get; init; }
         public double Bottom { get; init; }
 
-        /// <summary>The height of the tallest face in the group, which drives the requested zoom.</summary>
-        public double FaceHeight { get; init; }
-
         public double Height { get; init; }
         public double CenterX => (Left + Right) / 2.0;
         public double CenterY => (Top + Bottom) / 2.0;
@@ -46,6 +56,13 @@ public static class AutoFramingCalculator
     /// <summary>
     /// Computes the auto-framed configuration, or <c>null</c> when the caller should keep the
     /// incoming configuration untouched (bad geometry, or no usable face).
+    ///
+    /// <para>
+    /// Only <see cref="ImageFramingConfig.OffsetX"/>, <see cref="ImageFramingConfig.OffsetY"/> and
+    /// the user's own zoom are ever meaningful here: the returned
+    /// <see cref="ImageFramingConfig.Scale"/> is the plain fill ratio unless the user asked for a
+    /// zoom of their own.
+    /// </para>
     /// </summary>
     public static ImageFramingConfig? Compute(
         int imageWidth,
@@ -76,11 +93,12 @@ public static class AutoFramingCalculator
         if (baseFillScale <= 0)
             return null;
 
-        double scale = ComputeScale(imageW, imageH, targetW, targetH, baseFillScale, band, options);
-
-        // The user's manual zoom stays in charge of the final frame, exactly as it does today:
-        // it multiplies the chosen scale, but can never zoom out past covering the surface.
-        scale = Math.Max(baseFillScale, scale * baseConfig.Scale);
+        // Fill is both the floor and the ceiling. Above it the picture would be cropped tighter
+        // than covering the screen requires, which throws away picture for a framing that panning
+        // can usually reach anyway; below it a screen edge would show through. The user's own zoom
+        // stays a fine-tune multiplier on top of that, exactly as it was, so a hand-set zoom still
+        // magnifies the framing the editor previewed.
+        double scale = baseFillScale * Math.Max(1.0, baseConfig.Scale);
 
         double scaledW = imageW * scale;
         double scaledH = imageH * scale;
@@ -92,8 +110,26 @@ public static class AutoFramingCalculator
         double centredX = (targetW - scaledW) / 2.0;
         double centredY = (targetH - scaledH) / 2.0;
 
-        double placedX = ComputePlacementX(band, imageW, targetW, scaledW, scale);
-        double placedY = ComputePlacementY(band, imageH, targetH, scaledH, scale, options);
+        // Horizontal placement follows the subject sideways — the axis a portrait surface almost
+        // always has room on.
+        double placedX = PanToClear(
+            band.Left * imageW * scale,
+            band.Right * imageW * scale,
+            targetW,
+            scaledW,
+            options.EdgeMarginRatio,
+            centredX);
+
+        // Vertical placement is asked for by the head alone, and only once the subject has come
+        // within the headroom of an edge. A head that already clears both edges is not chased onto
+        // a fixed line: that bias moved pictures which needed nothing.
+        double placedY = PanToClear(
+            band.Top * imageH * scale,
+            band.Bottom * imageH * scale,
+            targetH,
+            scaledH,
+            options.TopMarginRatio,
+            centredY);
 
         return new ImageFramingConfig
         {
@@ -108,192 +144,56 @@ public static class AutoFramingCalculator
     }
 
     /// <summary>
-    /// The crop scale, chosen from the subject band rather than from any single face. The phone
-    /// resolution and the image's aspect ratio set the baseline — the image must always cover the
-    /// surface — and the band then decides whether a tighter crop frames the subject better, or
-    /// would simply throw the photographer's framing away.
+    /// The offset that brings <paramref name="nearPx"/>..<paramref name="farPx"/> just inside the
+    /// screen, and no further. Returned as the absolute position of the scaled picture's leading
+    /// edge, which is negative whenever the picture overflows the surface.
     ///
     /// <para>
-    /// Two things ask for a crop and the larger wins. A face smaller than
-    /// <see cref="AutoFramingOptions.TargetFaceHeightRatio"/> of the screen is enlarged toward it,
-    /// so a distant or full-body subject is framed rather than left as a speck. A band that does
-    /// not fit the surface — a pair standing apart, a face somewhere in a panorama — is brought in
-    /// whole, which is what stops the crop from settling on one character and pushing the other
-    /// off the screen.
+    /// <paramref name="centred"/> — where the plain fill crop already sits — is the starting point,
+    /// so a subject that clears both edges is returned untouched and a picture the photographer
+    /// framed well is not moved at all. When an edge is violated, the picture moves to the position
+    /// that clears that edge exactly: auto-framing nudges the composition, it does not re-make it.
     /// </para>
     ///
     /// <para>
-    /// That request is then capped, because a crop is only worth taking while there is framing left
-    /// to spend. Where covering the screen has kept at least
-    /// <see cref="AutoFramingOptions.MinVisibleAreaFraction"/> of the picture, the shape change has
-    /// been paid for and only <see cref="AutoFramingOptions.MaxUpscale"/> applies. Where covering
-    /// the screen has already spent more than that — a landscape photo reduced to a vertical slice
-    /// — there is no composition left to protect, so the ratio of the two governs instead and the
-    /// less the fill kept, the tighter the crop may become.
+    /// The result is then clamped to the offsets that still cover the surface, and that clamp is
+    /// what makes the "not the end of the picture" rule fall out for free. Once the picture's own
+    /// edge reaches the screen edge there is no offset left to give, so a subject standing at the
+    /// edge of the photograph is left where it is instead of being chased by a black band.
     /// </para>
     ///
     /// <para>
-    /// The user's own zoom is deliberately exempt from both bounds: it is applied to the scale
-    /// chosen here rather than folded into the constraint, so a hand-set zoom always magnifies the
-    /// framing exactly as the editor previewed it.
+    /// A subject larger than the safe zone cannot be brought inside it at all — a pair standing far
+    /// apart on a narrow surface. That is the one case where the overhang is balanced rather than
+    /// nudged, because there is no clear position to nudge to and splitting the loss evenly is
+    /// better than spending it all on one side.
     /// </para>
     /// </summary>
-    private static double ComputeScale(
-        double imageW,
-        double imageH,
-        double targetW,
-        double targetH,
-        double baseFillScale,
-        SubjectBand band,
-        AutoFramingOptions options)
+    private static double PanToClear(
+        double nearPx,
+        double farPx,
+        double target,
+        double scaled,
+        double marginRatio,
+        double centred)
     {
-        double bandWidth = Math.Clamp(band.Right - band.Left, 0.0, 1.0);
-        double bandHeight = Math.Clamp(band.Bottom - band.Top, 0.0, 1.0);
+        double coverageMin = target - scaled;
+        double margin = Math.Max(0.0, marginRatio) * target;
 
-        // The zoom the subject asks for: a face smaller than the target share of the screen is
-        // enlarged toward it, so a subject is framed rather than left as a speck on a 20:9 surface.
-        double faceHpx = Math.Max(1.0, band.FaceHeight * imageH);
-        double scaleForFace = (targetH * Math.Clamp(options.TargetFaceHeightRatio, 0.0, 1.0)) / faceHpx;
+        if (farPx - nearPx > target - (2 * margin))
+            return Math.Clamp((target - nearPx - farPx) / 2.0, coverageMin, 0.0);
 
-        // The zoom the band needs: the subject has to fit the screen it is being cropped for. A band
-        // wider than the phone surface — a pair standing apart, a face somewhere in a panorama —
-        // cannot be framed by covering the screen alone, because the slice that covers it need not
-        // reach the subject at all. Taking whichever dimension demands more brings the band in, and
-        // covers a wide subject and a tall one alike.
-        double bandWpx = Math.Max(1.0, bandWidth * imageW);
-        double bandHpx = Math.Max(1.0, bandHeight * imageH);
-        double scaleForBand = Math.Max(targetW / bandWpx, targetH / bandHpx);
+        // Where the picture already sits. A subject that clears both edges keeps it exactly.
+        double offset = centred;
 
-        double fitScale = Math.Max(scaleForFace, scaleForBand);
+        // Too close to (or past) the leading edge: move in by the overhang. A subject that fits the
+        // safe zone cannot violate both edges at once, so one branch is always enough.
+        if (nearPx + offset < margin)
+            offset = margin - nearPx;
+        else if (farPx + offset > target - margin)
+            offset = target - margin - farPx;
 
-        // How far the crop may be enlarged. Where covering the screen has kept at least
-        // MinVisibleAreaFraction of the picture, the shape change has been paid for and MaxUpscale
-        // is the only bound left — which is what leaves a phone-shaped picture almost untouched.
-        // Where covering the screen has already spent more than that — a landscape photo reduced to
-        // a vertical slice — there is no composition left to protect, so the ratio of the two
-        // governs instead, and the less the fill kept, the tighter the crop may become.
-        double fillVisible = Math.Min(1.0, (targetW / baseFillScale) / imageW)
-                           * Math.Min(1.0, (targetH / baseFillScale) / imageH);
-        double minVisible = Math.Clamp(options.MinVisibleAreaFraction, 1e-6, 1.0);
-
-        double cropCapRatio = fillVisible >= minVisible
-            ? options.MaxUpscale
-            : Math.Max(1.0, minVisible / Math.Max(1e-6, fillVisible));
-
-        double upscaleCap = baseFillScale * Math.Min(options.MaxUpscale, cropCapRatio);
-
-        double scale = Math.Clamp(fitScale, baseFillScale, upscaleCap);
-
-        if (double.IsNaN(scale) || double.IsInfinity(scale) || scale <= 0)
-            return baseFillScale;
-
-        return scale;
-    }
-
-    /// <summary>
-    /// Horizontal placement, returned as the absolute left edge of the scaled image.
-    ///
-    /// <para>
-    /// The frame is centred on the band, which is the offset that keeps the subject whole wherever
-    /// the crop is wide enough to allow it. It is bounded only by coverage: covering the surface
-    /// pins the picture so no screen edge can show through, and where that makes exact centring
-    /// impossible the picture sits as close to it as the surface permits — so a group mid-slide
-    /// ends up split evenly between the two edges rather than one character being given up to
-    /// whichever side the frame happened to stop on.
-    /// </para>
-    ///
-    /// <para>
-    /// Centring on the band is also what stops auto-framing from panning for its own sake. The crop
-    /// is not moved to satisfy a notion of where a subject ought to sit; it moves only because the
-    /// subject sits somewhere, and no further than the band's own centre requires.
-    /// </para>
-    /// </summary>
-    private static double ComputePlacementX(
-        SubjectBand band,
-        double imageW,
-        double targetW,
-        double scaledW,
-        double scale)
-    {
-        // Offsets that keep the picture covering the surface. Outside this range a screen edge
-        // shows through, which is an outright visual defect.
-        double coverageMin = targetW - scaledW;
-        double coverageMax = 0.0;
-
-        double bandLeft = band.Left * imageW * scale;
-        double bandRight = band.Right * imageW * scale;
-
-        // The offset that puts the band's centre on the screen's centre.
-        double centred = (targetW - bandLeft - bandRight) / 2.0;
-
-        return Math.Clamp(centred, coverageMin, coverageMax);
-    }
-
-    /// <summary>
-    /// Vertical placement, returned as the absolute top edge of the scaled image. The top of the
-    /// subject band is biased to the head line so the subject reads downward through the frame.
-    ///
-    /// <para>
-    /// Placement is clamped against the offset that still covers the surface, never against zero.
-    /// Clamping at zero instead would pin the picture to the top edge as soon as the crop is taller
-    /// than the surface — which is the normal case — and the head would then land wherever that put
-    /// it rather than on the head line. The subject's own headroom bound is what keeps the head
-    /// from being pushed off the top; coverage still has the final say, because an edge gap is an
-    /// outright visual defect while a head a fraction low is not.
-    /// </para>
-    ///
-    /// <para>
-    /// Lifting the band until its top reaches the head line would drag the picture down hard when
-    /// the band is tall — a full-body or two-character subject would take a large bite out of the
-    /// top of the frame to move the head a short distance. The band is therefore held inside the
-    /// frame as well, which leaves the upper-third bias to operate at full strength on the compact
-    /// subjects it was designed for and settles for a balanced frame on the tall ones.
-    /// </para>
-    /// </summary>
-    private static double ComputePlacementY(
-        SubjectBand band,
-        double imageH,
-        double targetH,
-        double scaledH,
-        double scale,
-        AutoFramingOptions options)
-    {
-        // Where the top of the subject lands once the image is scaled.
-        double bandTop = band.Top * imageH * scale;
-        double bandBottom = band.Bottom * imageH * scale;
-        double bandHeight = bandBottom - bandTop;
-
-        // Bias the subject's head to the head line. This is the whole point of the feature, so it
-        // wins unless it would take more of the frame than the composition can spare.
-        double headLine = targetH * Math.Clamp(options.HeadTopRatio, 0.0, 0.9);
-        double dy = headLine - bandTop;
-
-        // Coverage is the floor: below it a gap would open at the bottom of the screen. Above, the
-        // picture may not rise so far that the head crosses the headroom ceiling — the most it may
-        // be lifted while the head still clears the top margin.
-        double coverageFloor = targetH - scaledH;
-        double minHeadroom = Math.Max(0.0, options.TopMarginRatio) * targetH;
-        double headroomCeiling = Math.Max(coverageFloor, -bandTop + minHeadroom);
-
-        double min = coverageFloor;
-        double max = headroomCeiling;
-
-        // A band taller than the frame cannot be placed whole, so keep it balanced instead of
-        // letting the head-line bias push one end of the subject off the screen.
-        if (bandHeight > targetH)
-        {
-            min = Math.Max(min, targetH - bandBottom);
-            max = Math.Min(max, -bandTop);
-        }
-
-        if (min > max)
-        {
-            // Degenerate: fall back to whatever keeps the surface covered.
-            min = coverageFloor;
-            max = headroomCeiling;
-        }
-
-        return Math.Clamp(dy, min, max);
+        return Math.Clamp(offset, coverageMin, 0.0);
     }
 
     /// <summary>
@@ -368,7 +268,7 @@ public static class AutoFramingCalculator
         if (!any || right <= left || bottom <= top)
             return null;
 
-        // The subject continues below the faces: head, shoulders and any held prop or gesture.
+        // The subject continues below the faces: shoulders and any held prop or gesture.
         double bandBottom = Math.Min(bottom + (tallest * Math.Max(0.0, options.TorsoExtendRatio)), 1.0);
 
         return new SubjectBand
@@ -377,7 +277,6 @@ public static class AutoFramingCalculator
             Top = Math.Max(0.0, top),
             Right = Math.Min(1.0, right),
             Bottom = Math.Max(bottom, bandBottom),
-            FaceHeight = tallest,
             Height = Math.Max(bottom, bandBottom) - Math.Max(0.0, top)
         };
     }

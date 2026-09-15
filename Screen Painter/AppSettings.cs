@@ -84,20 +84,17 @@ public class AutoFramingSettings
     /// <summary>Default state for newly created collections; each collection can override it.</summary>
     public bool EnabledByDefault { get; set; }
 
-    /// <summary>Where the top of the head lands vertically (0 = top edge, 1 = bottom).</summary>
-    public double HeadTopRatio { get; set; } = 0.12;
+    /// <summary>How close to a screen side edge the subject may sit before the picture is panned.</summary>
+    public double EdgeMarginRatio { get; set; } = 0.05;
+
+    /// <summary>How close the source's pixel size must be to the screen to need no framing at all.</summary>
+    public double SizeToleranceRatio { get; set; } = 0.20;
+
+    /// <summary>How close the source's aspect ratio must be to the screen's to need no framing at all.</summary>
+    public double ShapeToleranceRatio { get; set; } = 0.03;
 
     /// <summary>How far below the face the subject continues, as a multiple of face height.</summary>
     public double TorsoExtendRatio { get; set; } = 2.4;
-
-    /// <summary>Share of the screen height the subject's face should end up occupying.</summary>
-    public double TargetFaceHeightRatio { get; set; } = 0.24;
-
-    /// <summary>
-    /// Share of the source covering the screen must have kept before a tighter crop is allowed, and
-    /// the inverse of the ceiling on that crop.
-    /// </summary>
-    public double MinVisibleAreaFraction { get; set; } = 0.80;
 
     /// <summary>How large a face must be, relative to the largest one, to join the subject group.</summary>
     public double RelativeFaceAreaRatio { get; set; } = 0.40;
@@ -107,9 +104,6 @@ public class AutoFramingSettings
 
     /// <summary>Detection confidence floor.</summary>
     public double MinConfidence { get; set; } = 0.5;
-
-    /// <summary>Cap on the aspect-preserving crop when enlarging, relative to the fill scale.</summary>
-    public double MaxUpscale { get; set; } = 1.35;
 
     /// <summary>Long edge, in pixels, that an image is downscaled to before inference.</summary>
     public int DetectionMaxPixels { get; set; } = 640;

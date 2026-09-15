@@ -23,11 +23,17 @@
 
 **Smart Auto-Framing (opt-in)**
 
- - When enabled, each wallpaper is analysed on the device to find the face of the person
-   or character in it, and the placement is adjusted for **your** screen before it is applied
- - The head is biased into the upper third of the screen; the horizontal position keeps the
-   face inside a comfortable central band instead of forcing it to dead centre, so the
-   result still follows the original composition
+ - A picture that is already your phone's own size, or already its shape, is applied exactly as
+   it is. Nothing is analysed and nothing is moved — a wallpaper the right shape cannot be
+   improved by cropping, only spoiled
+ - Anything else is analysed on the device to find the face of the person or character in it,
+   and the frame is **panned** to follow the subject. The crop is never made tighter than what
+   covering your screen requires, so no part of the picture is ever thrown away to improve the
+   framing
+ - The frame moves sideways only when the subject would otherwise be cut by a screen edge, and
+   only as far as clearing that edge needs. A subject already comfortably in frame is left
+   exactly where the photographer put it
+ - The frame moves up or down only when the head comes within the headroom of an edge
  - The crop is computed from the wallpaper surface of the actual phone, so a 1080x2400 phone
    and a 1440x3120 phone each get their own correct result
  - The subject is kept in frame — a held prop or gesture is not cropped away — and the
@@ -35,6 +41,16 @@
  - A framing you set by hand for a specific image always takes priority over auto-framing
  - Works for local **and** cloud collections. Detection runs on the already-downloaded copy
    and needs no network, so it also works from the background rotation service
+
+ **What it will not do**
+
+ - It never zooms in. A distant or full-body subject is therefore left as the photographer
+   framed it rather than being enlarged toward the centre of the screen: enlarging is a crop,
+   and a crop discards picture
+ - It never zooms out past filling the screen either, so no black band can ever be introduced
+ - Because the crop is only ever panned, a picture gets exactly one axis of freedom — the axis
+   its shape differs from your screen on. A photo wider than your screen can be moved sideways
+   but not up and down, and a photo narrower than it the other way round
 
  **Turning it on**
 
